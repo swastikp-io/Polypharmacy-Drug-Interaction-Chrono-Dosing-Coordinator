@@ -22,21 +22,21 @@ export const DiagnosisList: React.FC<DiagnosisListProps> = ({
   onUpdateVerification,
 }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingDiag, setEditingDiag] = useState<Diagnosis | null>(null);
+  const [editingDiagnosis, setEditingDiagnosis] = useState<Diagnosis | null>(null);
 
   const handleOpenAdd = () => {
-    setEditingDiag(null);
+    setEditingDiagnosis(null);
     setIsModalOpen(true);
   };
 
   const handleOpenEdit = (diag: Diagnosis) => {
-    setEditingDiag(diag);
+    setEditingDiagnosis(diag);
     setIsModalOpen(true);
   };
 
   const handleSave = async (data: any) => {
-    if (editingDiag) {
-      await onUpdateDiagnosis(editingDiag.id, data);
+    if (editingDiagnosis) {
+      await onUpdateDiagnosis(editingDiagnosis.id, data);
     } else {
       await onAddDiagnosis(data);
     }
@@ -44,17 +44,17 @@ export const DiagnosisList: React.FC<DiagnosisListProps> = ({
 
   return (
     <div className="space-y-4">
-      <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs flex items-center justify-between">
+      <div className="bg-white p-4 rounded-sm border border-[#E6E3E1] shadow-editorial flex items-center justify-between">
         <div>
-          <h3 className="text-sm font-bold text-slate-900">Active Diagnoses &amp; Chronic Problem List</h3>
-          <p className="text-xs text-slate-500">
-            Used to evaluate contraindications, Beers Criteria, and organ-clearance dosing thresholds.
+          <h3 className="text-sm font-bold text-[#171717]">Problem List &amp; Active Diagnoses</h3>
+          <p className="text-xs text-[#777777] mt-0.5">
+            Active and chronic conditions cross-referenced against drug-disease contraindications.
           </p>
         </div>
         <button
           type="button"
           onClick={handleOpenAdd}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-clinical-600 rounded-lg hover:bg-clinical-700 shadow-xs"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-[#1747E8] hover:bg-[#1238C7] rounded-sm shadow-editorial transition-colors"
         >
           <Plus className="w-4 h-4" aria-hidden="true" />
           <span>Add Diagnosis</span>
@@ -62,42 +62,46 @@ export const DiagnosisList: React.FC<DiagnosisListProps> = ({
       </div>
 
       {diagnoses.length === 0 ? (
-        <div className="bg-white rounded-xl border border-slate-200 p-8 text-center text-slate-500">
-          <Activity className="w-8 h-8 mx-auto text-slate-300 mb-2" aria-hidden="true" />
-          <p className="text-sm font-semibold">No medical diagnoses recorded for this patient.</p>
+        <div className="bg-white rounded-sm border border-[#E6E3E1] p-10 text-center pattern-dots-subtle shadow-editorial">
+          <Activity className="w-8 h-8 mx-auto text-[#777777] mb-2" aria-hidden="true" />
+          <h4 className="text-sm font-bold text-[#171717]">No Diagnoses Documented</h4>
+          <p className="text-xs text-[#777777] mt-1">Add medical conditions to verify drug-disease contraindications.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {diagnoses.map((diag) => (
             <article
               key={diag.id}
-              className="bg-white rounded-xl border border-slate-200 p-4 shadow-xs space-y-2.5"
+              className="bg-white rounded-sm border border-[#E6E3E1] p-4 shadow-editorial space-y-2.5 transition-colors hover:border-[#1747E8]"
             >
               <div className="flex items-start justify-between gap-2">
-                <div className="flex items-center gap-2">
-                  <span className="p-1.5 bg-clinical-50 text-clinical-700 rounded-md">
-                    <Activity className="w-4 h-4" aria-hidden="true" />
-                  </span>
-                  <div>
-                    <h4 className="text-sm font-bold text-slate-900">{diag.condition}</h4>
-                    <span className="text-2xs font-mono bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded">
-                      {diag.code}
-                    </span>
+                <div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h4 className="font-bold text-sm text-[#171717]">{diag.condition}</h4>
+                    {diag.code && (
+                      <span className="px-1.5 py-0.2 rounded-sm text-[10px] font-mono font-bold bg-[#FAF9F8] text-[#525252] border border-[#E6E3E1]">
+                        Code: {diag.code}
+                      </span>
+                    )}
+                    <VerificationBadge
+                      status={diag.verificationStatus}
+                      size="sm"
+                      interactive
+                      onStatusChange={(nextStatus) => onUpdateVerification(diag.id, nextStatus)}
+                    />
                   </div>
+                  <span className="text-[11px] text-[#777777] capitalize">
+                    Status: <strong className="text-[#171717]">{diag.clinicalStatus}</strong>
+                    {diag.onsetDate && ` • Onset: ${diag.onsetDate}`}
+                  </span>
                 </div>
 
                 <div className="flex items-center gap-1">
-                  <VerificationBadge
-                    status={diag.verificationStatus}
-                    size="sm"
-                    interactive
-                    onStatusChange={(nextStatus) => onUpdateVerification(diag.id, nextStatus)}
-                  />
                   <button
                     type="button"
                     onClick={() => handleOpenEdit(diag)}
                     aria-label={`Edit ${diag.condition}`}
-                    className="p-1 text-slate-400 hover:text-clinical-700 rounded"
+                    className="p-1 text-[#525252] hover:text-[#1747E8] rounded-sm transition-colors"
                   >
                     <Edit2 className="w-3.5 h-3.5" aria-hidden="true" />
                   </button>
@@ -109,7 +113,7 @@ export const DiagnosisList: React.FC<DiagnosisListProps> = ({
                       }
                     }}
                     aria-label={`Delete ${diag.condition}`}
-                    className="p-1 text-slate-400 hover:text-red-600 rounded"
+                    className="p-1 text-[#525252] hover:text-[#DC2626] rounded-sm transition-colors"
                   >
                     <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />
                   </button>
@@ -117,16 +121,10 @@ export const DiagnosisList: React.FC<DiagnosisListProps> = ({
               </div>
 
               {diag.notes && (
-                <div className="text-xs bg-slate-50 p-2.5 rounded-lg border border-slate-100 text-slate-700">
-                  {diag.notes}
+                <div className="text-xs bg-[#FAF9F8] p-2 rounded-sm border border-[#E6E3E1] text-[#525252]">
+                  <strong className="text-[#171717]">Notes:</strong> {diag.notes}
                 </div>
               )}
-
-              <div className="text-2xs text-slate-400 flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-slate-100">
-                <span>Status: <strong className="capitalize text-slate-600">{diag.clinicalStatus}</strong></span>
-                {diag.onsetDate && <span>Onset: {diag.onsetDate}</span>}
-                <span>Source: {diag.source}</span>
-              </div>
             </article>
           ))}
         </div>
@@ -137,7 +135,7 @@ export const DiagnosisList: React.FC<DiagnosisListProps> = ({
         onClose={() => setIsModalOpen(false)}
         onSave={handleSave}
         patientId={patientId}
-        initialData={editingDiag}
+        initialData={editingDiagnosis}
       />
     </div>
   );

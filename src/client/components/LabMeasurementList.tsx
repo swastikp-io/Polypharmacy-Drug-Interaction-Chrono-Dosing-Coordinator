@@ -1,13 +1,9 @@
 import React, { useState } from 'react';
-import {
-  calculateAge,
-  calculateCockcroftGaultCrCl,
-  classifyEGFR,
-} from '../../shared/calculations.js';
+import { Edit2, FlaskConical, Plus, Trash2 } from 'lucide-react';
+import { calculateAge, calculateCockcroftGaultCrCl } from '../../shared/calculations.js';
 import type { LabMeasurement, Patient, VerificationStatus } from '../../shared/types.js';
 import { LabMeasurementModal } from './LabMeasurementModal.js';
 import { VerificationBadge } from './VerificationBadge.js';
-import { Edit2, FlaskConical, Plus, Trash2 } from 'lucide-react';
 
 interface LabMeasurementListProps {
   labs: LabMeasurement[];
@@ -47,57 +43,152 @@ export const LabMeasurementList: React.FC<LabMeasurementListProps> = ({
     }
   };
 
-  // Derive latest renal markers for clinical summary preview
-  const egfrLab = labs
-    .filter((l) => l.category === 'renal' && l.testName.toLowerCase().includes('egfr'))
-    .sort((a, b) => new Date(b.collectionDate).getTime() - new Date(a.collectionDate).getTime())[0];
+  // Cockcroft-Gault CrCl calculation if serum creatinine is present
+  const scrLab = labs.find((l) => l.testName.toLowerCase().includes('creatinine'));
 
-  const crLab = labs
-    .filter((l) => l.category === 'renal' && l.testName.toLowerCase().includes('creatinine'))
-    .sort((a, b) => new Date(b.collectionDate).getTime() - new Date(a.collectionDate).getTime())[0];
+  let crcl: number | null = null;
+  if (scrLab && patient.weightKg) {
+    try {
+      const age = calculateAge(patient.dateOfBirth);
+      crcl = calculateCockcroftGaultCrCl({
+        age,
+        weightKg: patient.weightKg,
+        serumCreatinineMgDl: scrLab.value,
+        gender: patient.gender,
+      });
+    } catch {
+      crcl = null;
+    }
+  }
 
-  const patientAge = calculateAge(patient.dateOfBirth);
-  const estimatedCrCl = calculateCockcroftGaultCrCl({
-    age: patientAge,
-    weightKg: patient.weightKg,
-    serumCreatinineMgDl: crLab ? crLab.value : null,
-    gender: patient.gender,
-  });
-
-  const renalStage = classifyEGFR(egfrLab ? egfrLab.value : null);
-
-  const renalLabs = labs.filter((l) => l.category === 'renal');
-  const hepaticLabs = labs.filter((l) => l.category === 'hepatic');
-  const otherLabs = labs.filter((l) => l.category === 'other');
-
-  const renderLabTable = (items: LabMeasurement[], title: string) => (
-    <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
-      <div className="px-4 py-3 bg-slate-50 border-b border-slate-200">
-        <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider">{title}</h4>
+  return (
+    <div className="space-y-4">
+      {/* Header Bar */}
+      <div className="bg-white p-4 rounded-sm border border-[#E6E3E1] shadow-editorial flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <h3 className="text-sm font-bold text-[#171717]">Renal &amp; Hepatic Laboratory Measurements</h3>
+          <p className="text-xs text-[#777777] mt-0.5">
+            Key pharmacokinetic organ biomarkers driving dosage reduction and nephrotoxicity warnings.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={handleOpenAdd}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-[#1747E8] hover:bg-[#1238C7] rounded-sm shadow-editorial transition-colors"
+        >
+          <Plus className="w-4 h-4" aria-hidden="true" />
+          <span>Add Lab Result</span>
+        </button>
       </div>
-      {items.length === 0 ? (
-        <div className="p-4 text-xs text-slate-500 italic">No {title.toLowerCase()} measurements recorded.</div>
+
+      {/* CrCl Calculated Banner if available */}
+      {crcl !== null && (
+        <div className="bg-[#FAF9F8] border border-[#E6E3E1] rounded-sm p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-editorial">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-sm bg-[#F0F3FF] border border-[#D7DEFF] flex items-center justify-center text-[#1747E8] flex-shrink-0">
+              <FlaskConical className="w-4 h-4" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-bold text-[#171717]">Calculated Creatinine Clearance (Cockcroft-Gault)</span>
+                <span className="px-1.5 py-0.2 rounded-sm text-[10px] font-bold bg-[#D7DEFF] text-[#1747E8] border border-[#C0CEFF]">
+                  Deterministic
+                </span>
+              </div>
+              <p className="text-xs text-[#777777]">
+                Derived from Serum Creatinine ({scrLab?.value} {scrLab?.unit}), Weight ({patient.weightKg} kg), and Age.
+              </p>
+            </div>
+          </div>
+
+          <div className="text-left sm:text-right">
+            <div className="text-2xl font-bold text-[#1747E8] tabular-nums font-mono">
+              {crcl} <span className="text-xs font-sans text-[#777777]">mL/min</span>
+            </div>
+            <div className="text-[11px] font-semibold text-[#525252]">
+              {crcl < 30 ? (
+                <span className="text-[#DC2626]">Severe Renal Impairment (&lt;30)</span>
+              ) : crcl < 60 ? (
+                <span className="text-[#B45309]">Moderate Renal Impairment (30-59)</span>
+              ) : (
+                <span className="text-[#059669]">Normal / Mild (&ge;60)</span>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Lab Measurements Grid */}
+      {labs.length === 0 ? (
+        <div className="bg-white rounded-sm border border-[#E6E3E1] p-10 text-center pattern-dots-subtle shadow-editorial">
+          <FlaskConical className="w-8 h-8 mx-auto text-[#777777] mb-2" aria-hidden="true" />
+          <h4 className="text-sm font-bold text-[#171717]">No Lab Results Logged</h4>
+          <p className="text-xs text-[#777777] mt-1">Add serum creatinine, eGFR, potassium, or ALT/AST measurements.</p>
+        </div>
       ) : (
-        <div className="divide-y divide-slate-100">
-          {items.map((lab) => (
-            <div
-              key={lab.id}
-              className="p-3.5 hover:bg-slate-50/60 transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs"
-            >
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <span className="font-bold text-slate-900 text-sm">{lab.testName}</span>
-                  <span
-                    className={`px-2 py-0.5 rounded text-2xs font-bold uppercase tracking-wider ${
-                      lab.interpretation === 'high' || lab.interpretation === 'low'
-                        ? 'bg-amber-100 text-amber-900'
-                        : lab.interpretation === 'critical'
-                          ? 'bg-red-100 text-red-900'
-                          : 'bg-emerald-100 text-emerald-800'
-                    }`}
-                  >
-                    {lab.interpretation}
-                  </span>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+          {labs.map((lab) => {
+            const isAbnormal = lab.interpretation === 'high' || lab.interpretation === 'low' || lab.interpretation === 'critical';
+
+            return (
+              <article
+                key={lab.id}
+                className={`bg-white rounded-sm border p-4 shadow-editorial space-y-2.5 transition-colors ${
+                  isAbnormal ? 'border-[#FDE68A] bg-[#FFFDF5]' : 'border-[#E6E3E1]'
+                }`}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <h4 className="font-bold text-sm text-[#171717]">{lab.testName}</h4>
+                      {isAbnormal && (
+                        <span className="px-1.5 py-0.2 rounded-sm text-[10px] font-bold bg-[#FEF3C7] text-[#92400E] border border-[#FDE68A] uppercase">
+                          {lab.interpretation}
+                        </span>
+                      )}
+                    </div>
+                    <span className="text-[10px] text-[#777777] uppercase font-semibold">
+                      Category: {lab.category}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => handleOpenEdit(lab)}
+                      aria-label={`Edit ${lab.testName}`}
+                      className="p-1 text-[#525252] hover:text-[#1747E8] rounded-sm transition-colors"
+                    >
+                      <Edit2 className="w-3.5 h-3.5" aria-hidden="true" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (confirm(`Remove lab result ${lab.testName}?`)) {
+                          onDeleteLab(lab.id);
+                        }
+                      }}
+                      aria-label={`Delete ${lab.testName}`}
+                      className="p-1 text-[#525252] hover:text-[#DC2626] rounded-sm transition-colors"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />
+                    </button>
+                  </div>
+                </div>
+
+                <div className="p-3 bg-[#FAF9F8] rounded-sm border border-[#E6E3E1] flex items-baseline justify-between">
+                  <div className="text-2xl font-bold text-[#171717] tabular-nums font-mono">
+                    {lab.value} <span className="text-xs font-sans text-[#777777]">{lab.unit}</span>
+                  </div>
+                  {lab.referenceRange && (
+                    <div className="text-[10px] text-[#777777] text-right">
+                      Ref: {lab.referenceRange}
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex items-center justify-between text-[11px] text-[#777777] pt-1 border-t border-[#E6E3E1]">
+                  <span className="tabular-nums">Collected: {lab.collectionDate}</span>
                   <VerificationBadge
                     status={lab.verificationStatus}
                     size="sm"
@@ -105,151 +196,11 @@ export const LabMeasurementList: React.FC<LabMeasurementListProps> = ({
                     onStatusChange={(nextStatus) => onUpdateVerification(lab.id, nextStatus)}
                   />
                 </div>
-                <div className="text-slate-600 flex flex-wrap items-center gap-3">
-                  <span>
-                    Result: <strong className="text-clinical-950 font-mono text-sm">{lab.value}</strong>{' '}
-                    <span className="font-medium text-slate-500">{lab.unit}</span>
-                  </span>
-                  <span>• Reference: <span className="font-mono">{lab.referenceRange}</span></span>
-                  <span>• Date: {lab.collectionDate}</span>
-                </div>
-                {lab.notes && <div className="text-2xs text-slate-500 italic">&quot;{lab.notes}&quot;</div>}
-                <div className="text-2xs text-slate-400">Source: {lab.source}</div>
-              </div>
-
-              <div className="flex items-center gap-1.5 self-end sm:self-center">
-                <button
-                  type="button"
-                  onClick={() => handleOpenEdit(lab)}
-                  aria-label={`Edit ${lab.testName}`}
-                  className="p-1 text-slate-400 hover:text-clinical-700 rounded"
-                >
-                  <Edit2 className="w-3.5 h-3.5" aria-hidden="true" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (confirm(`Delete lab measurement for ${lab.testName}?`)) {
-                      onDeleteLab(lab.id);
-                    }
-                  }}
-                  aria-label={`Delete ${lab.testName}`}
-                  className="p-1 text-slate-400 hover:text-red-600 rounded"
-                >
-                  <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />
-                </button>
-              </div>
-            </div>
-          ))}
+              </article>
+            );
+          })}
         </div>
       )}
-    </div>
-  );
-
-  return (
-    <div className="space-y-4">
-      {/* Action Header */}
-      <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <h3 className="text-sm font-bold text-slate-900">Renal &amp; Hepatic Laboratory Panel</h3>
-          <p className="text-xs text-slate-500">
-            Biomarkers governing pharmacokinetic elimination, clearance estimates, and Beers dosing limits.
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={handleOpenAdd}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-clinical-600 rounded-lg hover:bg-clinical-700 shadow-xs flex-shrink-0"
-        >
-          <Plus className="w-4 h-4" aria-hidden="true" />
-          <span>Add Lab Result</span>
-        </button>
-      </div>
-
-      {/* Clinical Clearance Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Renal Function Card */}
-        <div className="bg-clinical-50/60 border border-clinical-200 rounded-xl p-4 space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-clinical-900 uppercase tracking-wider flex items-center gap-1.5">
-              <FlaskConical className="w-4 h-4 text-clinical-600" aria-hidden="true" />
-              Renal Clearance Assessment
-            </span>
-            <span className="px-2 py-0.5 rounded text-xs font-bold bg-clinical-200 text-clinical-900">
-              {renalStage.stage}
-            </span>
-          </div>
-
-          <div className="grid grid-cols-2 gap-2 text-xs pt-1">
-            <div className="bg-white p-2 rounded border border-clinical-100">
-              <span className="text-2xs text-slate-500 uppercase block font-semibold">Latest eGFR</span>
-              <span className="text-sm font-bold text-slate-900">
-                {egfrLab ? `${egfrLab.value} ${egfrLab.unit}` : 'Unknown'}
-              </span>
-            </div>
-            <div className="bg-white p-2 rounded border border-clinical-100">
-              <span className="text-2xs text-slate-500 uppercase block font-semibold">Estimated CrCl (Cockcroft-Gault)</span>
-              <span className="text-sm font-bold text-slate-900">
-                {estimatedCrCl !== null ? `${estimatedCrCl} mL/min` : 'Unknown'}
-              </span>
-            </div>
-          </div>
-
-          <p className="text-xs text-clinical-800 leading-relaxed font-medium">
-            {renalStage.clinicalInterpretation}
-          </p>
-        </div>
-
-        {/* Hepatic Function Card */}
-        <div className="bg-amber-50/60 border border-amber-200 rounded-xl p-4 space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-amber-900 uppercase tracking-wider flex items-center gap-1.5">
-              <FlaskConical className="w-4 h-4 text-amber-600" aria-hidden="true" />
-              Hepatic Function Panel
-            </span>
-            <span className="px-2 py-0.5 rounded text-xs font-bold bg-amber-200 text-amber-900">
-              {hepaticLabs.some((l) => l.interpretation === 'high') ? 'Elevated Transaminases' : 'Stable'}
-            </span>
-          </div>
-
-          <div className="grid grid-cols-3 gap-2 text-xs pt-1">
-            <div className="bg-white p-2 rounded border border-amber-100">
-              <span className="text-2xs text-slate-500 uppercase block font-semibold">ALT</span>
-              <span className="text-sm font-bold text-slate-900">
-                {labs.find((l) => l.testName.toLowerCase().includes('alt'))?.value ?? 'Unknown'}{' '}
-                <span className="text-2xs text-slate-500">U/L</span>
-              </span>
-            </div>
-            <div className="bg-white p-2 rounded border border-amber-100">
-              <span className="text-2xs text-slate-500 uppercase block font-semibold">AST</span>
-              <span className="text-sm font-bold text-slate-900">
-                {labs.find((l) => l.testName.toLowerCase().includes('ast'))?.value ?? 'Unknown'}{' '}
-                <span className="text-2xs text-slate-500">U/L</span>
-              </span>
-            </div>
-            <div className="bg-white p-2 rounded border border-amber-100">
-              <span className="text-2xs text-slate-500 uppercase block font-semibold">Bilirubin</span>
-              <span className="text-sm font-bold text-slate-900">
-                {labs.find((l) => l.testName.toLowerCase().includes('bilirubin'))?.value ?? 'Unknown'}{' '}
-                <span className="text-2xs text-slate-500">mg/dL</span>
-              </span>
-            </div>
-          </div>
-
-          <p className="text-xs text-amber-800 leading-relaxed font-medium">
-            {hepaticLabs.some((l) => l.interpretation === 'high')
-              ? 'Hepatic transaminases exceed reference range. Cumulative acetaminophen and CYP metabolism require careful monitoring.'
-              : 'Hepatic parameters are within expected limits. Monitor if prescribing hepatotoxic agents.'}
-          </p>
-        </div>
-      </div>
-
-      {/* Detailed Tables */}
-      <div className="space-y-4">
-        {renderLabTable(renalLabs, 'Renal Function Measurements')}
-        {renderLabTable(hepaticLabs, 'Hepatic Function Measurements')}
-        {otherLabs.length > 0 && renderLabTable(otherLabs, 'Other Diagnostic Labs')}
-      </div>
 
       <LabMeasurementModal
         isOpen={isModalOpen}

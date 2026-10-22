@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { AlertTriangle, Edit2, Plus, ShieldCheck, Trash2 } from 'lucide-react';
+import { Edit2, Plus, ShieldCheck, Trash2 } from 'lucide-react';
 import type { Allergy, VerificationStatus } from '../../shared/types.js';
 import { AllergyModal } from './AllergyModal.js';
 import { VerificationBadge } from './VerificationBadge.js';
@@ -44,17 +44,17 @@ export const AllergyList: React.FC<AllergyListProps> = ({
 
   return (
     <div className="space-y-4">
-      <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs flex items-center justify-between">
+      <div className="bg-white p-4 rounded-sm border border-[#E6E3E1] shadow-editorial flex items-center justify-between">
         <div>
-          <h3 className="text-sm font-bold text-slate-900">Documented Allergies &amp; Adverse Drug Reactions</h3>
-          <p className="text-xs text-slate-500">
+          <h3 className="text-sm font-bold text-[#171717]">Documented Allergies &amp; Adverse Drug Reactions</h3>
+          <p className="text-xs text-[#777777] mt-0.5">
             Cross-referenced by Drug Interaction Agent against current prescribing orders.
           </p>
         </div>
         <button
           type="button"
           onClick={handleOpenAdd}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-clinical-600 rounded-lg hover:bg-clinical-700 shadow-xs"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-[#1747E8] hover:bg-[#1238C7] rounded-sm shadow-editorial transition-colors"
         >
           <Plus className="w-4 h-4" aria-hidden="true" />
           <span>Add Allergy</span>
@@ -62,50 +62,54 @@ export const AllergyList: React.FC<AllergyListProps> = ({
       </div>
 
       {allergies.length === 0 ? (
-        <div className="bg-white rounded-xl border border-slate-200 p-8 text-center text-slate-500">
-          <ShieldCheck className="w-8 h-8 mx-auto text-emerald-500 mb-2" aria-hidden="true" />
-          <p className="text-sm font-semibold">No known drug allergies currently documented.</p>
+        <div className="bg-white rounded-sm border border-[#E6E3E1] p-10 text-center pattern-dots-subtle shadow-editorial">
+          <ShieldCheck className="w-8 h-8 mx-auto text-[#059669] mb-2" aria-hidden="true" />
+          <h4 className="text-sm font-bold text-[#171717]">No Known Drug Allergies</h4>
+          <p className="text-xs text-[#777777] mt-1">No hypersensitivities or adverse reactions currently documented.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {allergies.map((allergy) => {
             const isSevere =
               allergy.severity === 'severe' || allergy.severity === 'life-threatening';
             return (
               <article
                 key={allergy.id}
-                className={`bg-white rounded-xl border p-4 shadow-xs space-y-2.5 ${
-                  isSevere ? 'border-red-200 bg-red-50/20' : 'border-slate-200'
+                className={`bg-white rounded-sm border p-4 shadow-editorial space-y-2.5 transition-colors ${
+                  isSevere ? 'border-[#FECACA] bg-[#FFFDF5]' : 'border-[#E6E3E1]'
                 }`}
               >
                 <div className="flex items-start justify-between gap-2">
-                  <div className="flex items-center gap-2">
-                    <span className="p-1.5 bg-slate-100 rounded-md text-slate-700">
-                      <AlertTriangle
-                        className={`w-4 h-4 ${isSevere ? 'text-red-600' : 'text-amber-600'}`}
-                        aria-hidden="true"
-                      />
-                    </span>
-                    <div>
-                      <h4 className="text-sm font-bold text-slate-900">{allergy.allergen}</h4>
-                      <span className="text-2xs text-slate-500 uppercase tracking-wider font-semibold">
-                        {allergy.allergenType} • Severity: {allergy.severity}
+                  <div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h4 className="font-bold text-sm text-[#171717]">{allergy.allergen}</h4>
+                      <span
+                        className={`px-1.5 py-0.2 rounded-sm text-[10px] font-bold uppercase tracking-wider ${
+                          isSevere
+                            ? 'bg-[#FEE2E2] text-[#991B1B] border border-[#FECACA]'
+                            : 'bg-[#FEF3C7] text-[#92400E] border border-[#FDE68A]'
+                        }`}
+                      >
+                        {allergy.severity}
                       </span>
+                      <VerificationBadge
+                        status={allergy.verificationStatus}
+                        size="sm"
+                        interactive
+                        onStatusChange={(nextStatus) => onUpdateVerification(allergy.id, nextStatus)}
+                      />
                     </div>
+                    <span className="text-[11px] text-[#777777] font-medium capitalize">
+                      Category: {allergy.allergenType}
+                    </span>
                   </div>
 
                   <div className="flex items-center gap-1">
-                    <VerificationBadge
-                      status={allergy.verificationStatus}
-                      size="sm"
-                      interactive
-                      onStatusChange={(nextStatus) => onUpdateVerification(allergy.id, nextStatus)}
-                    />
                     <button
                       type="button"
                       onClick={() => handleOpenEdit(allergy)}
-                      aria-label={`Edit allergy for ${allergy.allergen}`}
-                      className="p-1 text-slate-400 hover:text-clinical-700 rounded"
+                      aria-label={`Edit ${allergy.allergen} allergy`}
+                      className="p-1 text-[#525252] hover:text-[#1747E8] rounded-sm transition-colors"
                     >
                       <Edit2 className="w-3.5 h-3.5" aria-hidden="true" />
                     </button>
@@ -116,26 +120,24 @@ export const AllergyList: React.FC<AllergyListProps> = ({
                           onDeleteAllergy(allergy.id);
                         }
                       }}
-                      aria-label={`Delete allergy for ${allergy.allergen}`}
-                      className="p-1 text-slate-400 hover:text-red-600 rounded"
+                      aria-label={`Delete ${allergy.allergen} allergy`}
+                      className="p-1 text-[#525252] hover:text-[#DC2626] rounded-sm transition-colors"
                     >
                       <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />
                     </button>
                   </div>
                 </div>
 
-                <div className="text-xs bg-slate-50 p-2.5 rounded-lg border border-slate-100 text-slate-700">
-                  <span className="font-semibold text-slate-900">Documented Reaction: </span>
-                  {allergy.reaction}
-                </div>
-
-                {allergy.notes && (
-                  <p className="text-xs text-slate-600 italic">&quot;{allergy.notes}&quot;</p>
-                )}
-
-                <div className="text-2xs text-slate-400 flex items-center justify-between pt-1 border-t border-slate-100">
-                  <span>Source: {allergy.source}</span>
-                  <span>Recorded: {allergy.dateRecorded}</span>
+                <div className="text-xs bg-[#FAF9F8] p-2.5 rounded-sm border border-[#E6E3E1] space-y-1">
+                  <div>
+                    <span className="font-semibold text-[#171717]">Manifestation: </span>
+                    <span className="text-[#525252]">{allergy.reaction}</span>
+                  </div>
+                  {allergy.notes && (
+                    <div className="text-[11px] text-[#777777]">
+                      <strong>Clinical Notes:</strong> {allergy.notes}
+                    </div>
+                  )}
                 </div>
               </article>
             );

@@ -21,23 +21,23 @@ export const VerificationBadge: React.FC<VerificationBadgeProps> = ({
         return {
           label: 'Confirmed',
           icon: CheckCircle2,
-          bgColor: 'bg-emerald-50 text-emerald-800 border-emerald-300',
-          iconColor: 'text-emerald-600',
+          bgColor: 'bg-[#ECFDF5] text-[#065F46] border-[#A7F3D0]',
+          iconColor: 'text-[#059669]',
         };
       case 'unverified':
         return {
           label: 'Unverified',
           icon: AlertCircle,
-          bgColor: 'bg-amber-50 text-amber-800 border-amber-300',
-          iconColor: 'text-amber-600',
+          bgColor: 'bg-[#FEF3C7] text-[#92400E] border-[#FDE68A]',
+          iconColor: 'text-[#D97706]',
         };
       case 'unknown':
       default:
         return {
           label: 'Unknown',
           icon: HelpCircle,
-          bgColor: 'bg-slate-100 text-slate-700 border-slate-300',
-          iconColor: 'text-slate-500',
+          bgColor: 'bg-[#FAF9F8] text-[#525252] border-[#E6E3E1]',
+          iconColor: 'text-[#777777]',
         };
     }
   };
@@ -54,7 +54,7 @@ export const VerificationBadge: React.FC<VerificationBadgeProps> = ({
     onStatusChange(cycle[status]);
   };
 
-  const padding = size === 'sm' ? 'px-2 py-0.5 text-xs' : 'px-2.5 py-1 text-xs font-medium';
+  const padding = size === 'sm' ? 'px-1.5 py-0.5 text-[11px]' : 'px-2 py-0.5 text-xs font-medium';
 
   if (interactive) {
     return (
@@ -63,22 +63,22 @@ export const VerificationBadge: React.FC<VerificationBadgeProps> = ({
         onClick={handleNextClick}
         title={`Verification Status: ${label}. Click to toggle.`}
         aria-label={`Verification status is currently ${label}. Click to cycle status.`}
-        className={`inline-flex items-center gap-1.5 rounded-full border transition-colors hover:opacity-85 focus:outline-none focus:ring-2 focus:ring-clinical-500 focus:ring-offset-1 ${padding} ${bgColor}`}
+        className={`inline-flex items-center gap-1 rounded-sm border transition-all hover:brightness-95 focus:outline-none focus:ring-2 focus:ring-[#1747E8] ${padding} ${bgColor}`}
       >
-        <Icon className={`w-3.5 h-3.5 ${iconColor}`} aria-hidden="true" />
-        <span>{label}</span>
+        <Icon className={`w-3 h-3 ${iconColor} flex-shrink-0`} aria-hidden="true" />
+        <span className="font-semibold tracking-tight">{label}</span>
       </button>
     );
   }
 
   return (
     <span
-      className={`inline-flex items-center gap-1.5 rounded-full border ${padding} ${bgColor}`}
+      className={`inline-flex items-center gap-1 rounded-sm border ${padding} ${bgColor}`}
       role="status"
       aria-label={`Verification status: ${label}`}
     >
-      <Icon className={`w-3.5 h-3.5 ${iconColor}`} aria-hidden="true" />
-      <span>{label}</span>
+      <Icon className={`w-3 h-3 ${iconColor} flex-shrink-0`} aria-hidden="true" />
+      <span className="font-semibold tracking-tight">{label}</span>
     </span>
   );
 };

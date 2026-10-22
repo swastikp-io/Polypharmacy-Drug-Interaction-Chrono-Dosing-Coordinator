@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
 import {
+  ChevronDown,
+  ChevronUp,
   Clock,
   Edit2,
-  FileText,
   Filter,
   Pill,
   Plus,
   Search,
   Trash2,
-  User,
 } from 'lucide-react';
 import type { Medication, VerificationStatus } from '../../shared/types.js';
 import { MedicationModal } from './MedicationModal.js';
@@ -35,6 +35,17 @@ export const MedicationList: React.FC<MedicationListProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingMed, setEditingMed] = useState<Medication | null>(null);
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+
+  const toggleExpand = (id: string) => {
+    const next = new Set(expandedIds);
+    if (next.has(id)) {
+      next.delete(id);
+    } else {
+      next.add(id);
+    }
+    setExpandedIds(next);
+  };
 
   const filteredMeds = medications.filter((m) => {
     const matchesStatus =
@@ -76,30 +87,30 @@ export const MedicationList: React.FC<MedicationListProps> = ({
 
   return (
     <div className="space-y-4">
-      {/* Action Header & Filters */}
-      <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
-        <div className="flex flex-1 items-center gap-2">
+      {/* 1. Swiss Editorial Toolbar */}
+      <div className="bg-white border border-[#E6E3E1] rounded-sm p-3.5 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 shadow-editorial">
+        <div className="flex flex-1 flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
           <div className="relative flex-1 max-w-md">
-            <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" aria-hidden="true" />
+            <Search className="w-4 h-4 absolute left-3 top-2.5 text-[#777777]" aria-hidden="true" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search by brand, generic, active ingredient..."
               aria-label="Filter medications by search keyword"
-              className="w-full pl-9 pr-3 py-1.5 text-xs rounded-lg border border-slate-300 focus:ring-2 focus:ring-clinical-500 focus:border-clinical-500"
+              className="w-full pl-9 pr-3 py-1.5 text-xs bg-[#FAF9F8] rounded-sm border border-[#E6E3E1] text-[#171717] placeholder:text-[#777777] focus:bg-white focus:border-[#1747E8] focus:ring-1 focus:ring-[#1747E8] transition-colors"
             />
           </div>
 
-          <div className="flex items-center gap-1.5 text-xs text-slate-600">
-            <Filter className="w-3.5 h-3.5 text-slate-400" aria-hidden="true" />
+          <div className="flex items-center gap-2">
+            <Filter className="w-3.5 h-3.5 text-[#777777] flex-shrink-0" aria-hidden="true" />
             <select
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value)}
               aria-label="Filter medications by status"
-              className="px-2.5 py-1.5 text-xs rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-clinical-500"
+              className="px-2.5 py-1.5 text-xs bg-[#FAF9F8] rounded-sm border border-[#E6E3E1] text-[#171717] font-medium focus:bg-white focus:border-[#1747E8] focus:ring-1 focus:ring-[#1747E8] transition-colors"
             >
-              <option value="all">All Orders ({medications.length})</option>
+              <option value="all">All Statuses ({medications.length})</option>
               <option value="active_or_prn">Active &amp; PRN</option>
               <option value="active">Active Only</option>
               <option value="prn">PRN Only</option>
@@ -112,132 +123,129 @@ export const MedicationList: React.FC<MedicationListProps> = ({
         <button
           type="button"
           onClick={handleOpenAdd}
-          className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-clinical-600 rounded-lg hover:bg-clinical-700 transition-colors shadow-xs focus:outline-none focus:ring-2 focus:ring-clinical-500"
+          className="inline-flex items-center justify-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold text-white bg-[#1747E8] hover:bg-[#1238C7] rounded-sm transition-colors shadow-editorial focus:outline-none focus:ring-2 focus:ring-[#1747E8]"
         >
           <Plus className="w-4 h-4" aria-hidden="true" />
           <span>Add Prescription / OTC</span>
         </button>
       </div>
 
-      {/* Medication Cards List */}
+      {/* 2. Medication Rows with Subtle Dividers */}
       {filteredMeds.length === 0 ? (
-        <div className="bg-white rounded-xl border border-slate-200 p-8 text-center text-slate-500">
-          <Pill className="w-8 h-8 mx-auto text-slate-300 mb-2" aria-hidden="true" />
-          <p className="text-sm font-semibold">No medications found matching current filters.</p>
-          <p className="text-xs text-slate-400 mt-1">Adjust search parameters or add a new medication order.</p>
+        <div className="bg-white border border-[#E6E3E1] rounded-sm p-12 text-center pattern-dots-subtle shadow-editorial">
+          <div className="inline-flex items-center justify-center w-12 h-12 rounded-sm bg-[#F4F2F0] text-[#777777] mb-3 border border-[#E6E3E1]">
+            <Pill className="w-6 h-6" aria-hidden="true" />
+          </div>
+          <h4 className="text-sm font-bold text-[#171717]">No medications match filters</h4>
+          <p className="text-xs text-[#777777] mt-1 max-w-sm mx-auto">
+            Adjust search criteria or use the &ldquo;Add Prescription&rdquo; action above to add an order.
+          </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-3.5">
+        <div className="bg-white border border-[#E6E3E1] rounded-sm divide-y divide-[#E6E3E1] shadow-editorial overflow-hidden">
+          {/* Table Header Row (Desktop) */}
+          <div className="hidden lg:grid grid-cols-12 gap-3 px-4 py-2 bg-[#FAF9F8] border-b border-[#E6E3E1] text-[11px] font-bold uppercase tracking-wider text-[#777777]">
+            <div className="col-span-4">Medication &amp; Generic Name</div>
+            <div className="col-span-2">Strength / Form</div>
+            <div className="col-span-3">Prescribed Regimen</div>
+            <div className="col-span-2 text-center">Status &amp; Verification</div>
+            <div className="col-span-1 text-right">Actions</div>
+          </div>
+
           {filteredMeds.map((med) => {
+            const isExpanded = expandedIds.has(med.id);
             const isDiscontinued = med.status === 'discontinued';
+            const isHeld = med.status === 'held';
+
             return (
               <article
                 key={med.id}
-                className={`bg-white rounded-xl border transition-all p-4 shadow-xs ${
-                  isDiscontinued
-                    ? 'border-slate-200 opacity-60 bg-slate-50/50'
-                    : 'border-slate-200 hover:border-clinical-300'
+                className={`p-4 transition-colors hover:bg-[#FAF9F8]/70 ${
+                  isDiscontinued ? 'opacity-65 bg-[#FAF9F8]/40' : ''
                 }`}
               >
-                <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-3">
-                  {/* Left Column: Brand, Generic, Ingredients, Details */}
-                  <div className="flex-1 space-y-2.5">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <h4 className="text-base font-bold text-slate-900">{med.brand}</h4>
-                      <span className="text-xs text-slate-600 font-medium">({med.genericName})</span>
-                      <span
-                        className={`px-2 py-0.5 rounded text-2xs font-bold uppercase tracking-wider ${
-                          med.status === 'active'
-                            ? 'bg-emerald-100 text-emerald-800'
-                            : med.status === 'prn'
-                              ? 'bg-blue-100 text-blue-800'
-                              : med.status === 'held'
-                                ? 'bg-amber-100 text-amber-800'
-                                : 'bg-slate-200 text-slate-700'
-                        }`}
-                      >
-                        {med.status}
-                      </span>
-                      <VerificationBadge
-                        status={med.verificationStatus}
-                        size="sm"
-                        interactive
-                        onStatusChange={(nextStatus) => onUpdateVerification(med.id, nextStatus)}
-                      />
-                    </div>
-
-                    {/* Active Ingredients Tags */}
-                    <div className="flex flex-wrap items-center gap-1.5 text-xs">
-                      <span className="text-2xs font-bold uppercase text-slate-400 tracking-wider">
-                        Active Ingredients:
-                      </span>
-                      {(med.activeIngredients || []).map((ing, i) => (
+                {/* Main Row Grid */}
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 items-start">
+                  {/* Col 1: Brand & Generic */}
+                  <div className="lg:col-span-4 space-y-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h4 className="text-sm font-bold text-[#171717] tracking-tight">
+                        {med.brand}
+                      </h4>
+                      {med.status !== 'active' && (
                         <span
-                          key={i}
-                          className="px-2 py-0.5 bg-clinical-50 text-clinical-900 border border-clinical-200 rounded font-medium text-xs"
+                          className={`px-1.5 py-0.2 rounded-sm text-[10px] font-bold uppercase tracking-wider ${
+                            isHeld
+                              ? 'bg-[#FEF3C7] text-[#92400E] border border-[#FDE68A]'
+                              : isDiscontinued
+                                ? 'bg-[#F4F2F0] text-[#777777] border border-[#E6E3E1]'
+                                : 'bg-[#D7DEFF] text-[#1747E8] border border-[#C0CEFF]'
+                          }`}
                         >
-                          {ing.name} {ing.strength ? `(${ing.strength})` : ''}
+                          {med.status}
                         </span>
-                      ))}
-                    </div>
-
-                    {/* Detailed Clinical Properties Grid */}
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs bg-slate-50/80 p-2.5 rounded-lg border border-slate-100">
-                      <div>
-                        <span className="text-2xs text-slate-400 uppercase font-semibold block">Salt Form</span>
-                        <span className="font-medium text-slate-800">{med.salt || 'None / Unknown'}</span>
-                      </div>
-                      <div>
-                        <span className="text-2xs text-slate-400 uppercase font-semibold block">Strength</span>
-                        <span className="font-medium text-slate-800">{med.strength}</span>
-                      </div>
-                      <div>
-                        <span className="text-2xs text-slate-400 uppercase font-semibold block">Form &amp; Route</span>
-                        <span className="font-medium text-slate-800">
-                          {med.formulation} • {med.route}
-                        </span>
-                      </div>
-                      <div>
-                        <span className="text-2xs text-slate-400 uppercase font-semibold block">Prescribed Dose</span>
-                        <span className="font-bold text-clinical-800">{med.prescribedDose}</span>
-                      </div>
-                    </div>
-
-                    {/* Administration Instructions */}
-                    <div className="flex items-start gap-2 text-xs text-slate-700">
-                      <Clock className="w-3.5 h-3.5 text-clinical-600 mt-0.5 flex-shrink-0" aria-hidden="true" />
-                      <div>
-                        <span className="font-semibold text-slate-900">{med.frequency}: </span>
-                        <span>{med.administrationInstructions}</span>
-                      </div>
-                    </div>
-
-                    {/* Source & Prescriber metadata */}
-                    <div className="flex flex-wrap items-center gap-4 text-2xs text-slate-500 pt-1 border-t border-slate-100">
-                      <span className="flex items-center gap-1">
-                        <User className="w-3 h-3 text-slate-400" aria-hidden="true" />
-                        <span>Prescriber: <strong>{med.prescriber || 'Unknown'}</strong></span>
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <FileText className="w-3 h-3 text-slate-400" aria-hidden="true" />
-                        <span>Source: <strong>{med.source || 'Unknown'}</strong></span>
-                      </span>
-                      {med.startDate && (
-                        <span>Started: <strong>{med.startDate}</strong></span>
                       )}
+                    </div>
+                    <p className="text-xs text-[#777777] font-medium">
+                      {med.genericName}
+                    </p>
+                  </div>
+
+                  {/* Col 2: Strength & Formulation */}
+                  <div className="lg:col-span-2 text-xs text-[#171717] space-y-0.5">
+                    <div className="font-semibold tabular-nums">{med.strength}</div>
+                    <div className="text-[11px] text-[#777777]">
+                      {med.formulation} • {med.route}
                     </div>
                   </div>
 
-                  {/* Right Column: Actions */}
-                  <div className="flex lg:flex-col items-center justify-end gap-1.5 flex-shrink-0 border-t lg:border-t-0 pt-2 lg:pt-0">
+                  {/* Col 3: Prescribed Regimen & Frequency */}
+                  <div className="lg:col-span-3 text-xs space-y-1">
+                    <div className="font-semibold text-[#1747E8]">
+                      {med.prescribedDose}
+                    </div>
+                    <div className="flex items-start gap-1 text-[11px] text-[#525252]">
+                      <Clock className="w-3 h-3 text-[#777777] flex-shrink-0 mt-0.5" aria-hidden="true" />
+                      <span className="leading-snug">
+                        <strong>{med.frequency}:</strong> {med.administrationInstructions}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Col 4: Verification Status */}
+                  <div className="lg:col-span-2 flex flex-col items-start lg:items-center justify-center gap-1">
+                    <VerificationBadge
+                      status={med.verificationStatus}
+                      size="sm"
+                      interactive
+                      onStatusChange={(nextStatus) => onUpdateVerification(med.id, nextStatus)}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => toggleExpand(med.id)}
+                      aria-expanded={isExpanded}
+                      aria-label={`${isExpanded ? 'Collapse' : 'Expand'} details for ${med.brand}`}
+                      className="inline-flex items-center gap-0.5 text-[11px] text-[#1747E8] hover:text-[#1238C7] font-medium transition-colors mt-0.5"
+                    >
+                      <span>{isExpanded ? 'Less details' : 'More details'}</span>
+                      {isExpanded ? (
+                        <ChevronUp className="w-3 h-3" aria-hidden="true" />
+                      ) : (
+                        <ChevronDown className="w-3 h-3" aria-hidden="true" />
+                      )}
+                    </button>
+                  </div>
+
+                  {/* Col 5: Actions */}
+                  <div className="lg:col-span-1 flex items-center justify-end gap-1 pt-1 lg:pt-0 border-t lg:border-t-0 border-[#E6E3E1]">
                     <button
                       type="button"
                       onClick={() => handleOpenEdit(med)}
                       aria-label={`Edit ${med.brand}`}
-                      className="p-1.5 text-slate-500 hover:text-clinical-700 hover:bg-clinical-50 rounded-lg transition-colors"
+                      className="p-1.5 text-[#525252] hover:text-[#1747E8] hover:bg-[#F0F3FF] rounded-sm transition-colors"
                       title="Edit order"
                     >
-                      <Edit2 className="w-4 h-4" aria-hidden="true" />
+                      <Edit2 className="w-3.5 h-3.5" aria-hidden="true" />
                     </button>
                     <button
                       type="button"
@@ -247,13 +255,55 @@ export const MedicationList: React.FC<MedicationListProps> = ({
                         }
                       }}
                       aria-label={`Delete ${med.brand}`}
-                      className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                      className="p-1.5 text-[#525252] hover:text-[#DC2626] hover:bg-[#FEE2E2] rounded-sm transition-colors"
                       title="Delete order"
                     >
-                      <Trash2 className="w-4 h-4" aria-hidden="true" />
+                      <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />
                     </button>
                   </div>
                 </div>
+
+                {/* Expandable Details Drawer */}
+                {isExpanded && (
+                  <div className="mt-3 pt-3 border-t border-[#E6E3E1] bg-[#FAF9F8] rounded-sm p-3 text-xs space-y-2.5">
+                    {/* Active Ingredients List */}
+                    <div>
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-[#777777] block mb-1">
+                        Active Pharmaceutical Ingredients
+                      </span>
+                      <div className="flex flex-wrap gap-1.5">
+                        {(med.activeIngredients || []).map((ing, idx) => (
+                          <span
+                            key={idx}
+                            className="inline-flex items-center px-2 py-0.5 rounded-sm bg-white border border-[#E6E3E1] text-[11px] text-[#171717] font-medium"
+                          >
+                            {ing.name} {ing.strength ? `(${ing.strength})` : ''}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Metadata Grid */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1 border-t border-[#E6E3E1]/70 text-[11px]">
+                      <div>
+                        <span className="text-[#777777] block">Salt Form</span>
+                        <span className="font-medium text-[#171717]">{med.salt || 'None / Unknown'}</span>
+                      </div>
+                      <div>
+                        <span className="text-[#777777] block">Prescriber</span>
+                        <span className="font-medium text-[#171717]">{med.prescriber || 'Unknown'}</span>
+                      </div>
+                      <div>
+                        <span className="text-[#777777] block">Source</span>
+                        <span className="font-medium text-[#171717]">{med.source || 'EMR Intake'}</span>
+                      </div>
+                      <div>
+                        <span className="text-[#777777] block">Start Date</span>
+                        <span className="font-medium text-[#171717] tabular-nums">{med.startDate || 'Not specified'}</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </article>
             );
           })}

@@ -61,16 +61,16 @@ export const ConsolidatedDossierTab: React.FC<ConsolidatedDossierTabProps> = ({
   return (
     <div className="space-y-4">
       {/* Top Action Ribbon */}
-      <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-xs flex flex-wrap items-center justify-between gap-3">
+      <div className="bg-white p-3.5 rounded-sm border border-[#E6E3E1] shadow-editorial flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          <span className="text-xs font-bold text-slate-700">Multi-Agent Actions:</span>
+          <span className="text-xs font-bold text-[#171717]">Multi-Agent Actions:</span>
           <button
             type="button"
             onClick={onOpenWorkflow}
-            className="px-3 py-1.5 text-xs font-semibold bg-clinical-600 hover:bg-clinical-700 text-white rounded-lg transition-colors flex items-center gap-1.5 shadow-2xs"
+            className="px-3 py-1.5 text-xs font-semibold bg-[#1747E8] hover:bg-[#1238C7] text-white rounded-sm transition-colors flex items-center gap-1.5 shadow-editorial"
           >
             <Sparkles className="w-3.5 h-3.5" aria-hidden="true" />
-            <span>Open Multi-Agent Stepper (Phase 5)</span>
+            <span>Run 3-Agent Workflow (Phase 5)</span>
           </button>
         </div>
 
@@ -79,47 +79,39 @@ export const ConsolidatedDossierTab: React.FC<ConsolidatedDossierTabProps> = ({
             type="button"
             onClick={loadReport}
             disabled={loading}
-            className="px-3 py-1.5 text-xs font-semibold text-slate-700 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg transition-colors flex items-center gap-1.5 shadow-2xs disabled:opacity-50"
+            className="px-3 py-1.5 text-xs font-semibold text-[#171717] bg-[#FAF9F8] hover:bg-white border border-[#E6E3E1] hover:border-[#1747E8] rounded-sm transition-colors flex items-center gap-1.5 shadow-editorial disabled:opacity-50"
           >
-            <RefreshCw className={`w-3.5 h-3.5 text-slate-500 ${loading ? 'animate-spin' : ''}`} aria-hidden="true" />
+            <RefreshCw className={`w-3.5 h-3.5 text-[#777777] ${loading ? 'animate-spin' : ''}`} aria-hidden="true" />
             <span>Refresh Dossier</span>
           </button>
 
           <button
             type="button"
             onClick={onOpenGovernance}
-            className="px-3 py-1.5 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 rounded-lg transition-colors flex items-center gap-1.5 shadow-2xs"
+            className="px-3 py-1.5 text-xs font-semibold text-[#525252] bg-white hover:bg-[#FAF9F8] border border-[#E6E3E1] rounded-sm transition-colors flex items-center gap-1.5 shadow-editorial"
           >
-            <Shield className="w-3.5 h-3.5 text-slate-500" aria-hidden="true" />
+            <Shield className="w-3.5 h-3.5 text-[#B45309]" aria-hidden="true" />
             <span>Data Governance &amp; Purge</span>
           </button>
         </div>
       </div>
 
       {loading && !report ? (
-        <div className="p-12 text-center bg-white rounded-xl border border-slate-200">
-          <RefreshCw className="w-8 h-8 text-clinical-600 animate-spin mx-auto mb-3" aria-hidden="true" />
-          <h3 className="text-sm font-bold text-slate-800">Synthesizing Multi-Agent Clinical Dossier...</h3>
-          <p className="text-xs text-slate-500 mt-1">Aggregating OCR extractions, PK interaction findings, and circadian timetable.</p>
+        <div className="p-12 text-center bg-white rounded-sm border border-[#E6E3E1] shadow-editorial">
+          <RefreshCw className="w-6 h-6 animate-spin text-[#1747E8] mx-auto mb-2" />
+          <p className="text-xs text-[#777777]">Compiling consolidated dossier across all 3 agent pipelines...</p>
         </div>
-      ) : error || !report ? (
-        <div className="p-6 bg-red-50 border border-red-200 rounded-xl text-red-900">
-          <div className="flex items-center gap-2 font-bold mb-2">
-            <AlertTriangle className="w-5 h-5 text-red-600" aria-hidden="true" />
-            <span>Failed to Compile Dossier</span>
-          </div>
-          <p className="text-xs text-red-700">{error || 'Unknown error occurred while synthesizing report.'}</p>
-          <button
-            type="button"
-            onClick={loadReport}
-            className="mt-3 px-3 py-1.5 text-xs font-semibold bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-          >
-            Retry Report
-          </button>
+      ) : error ? (
+        <div className="p-4 bg-[#FEE2E2] border border-[#FECACA] rounded-sm text-xs text-[#991B1B] flex items-center gap-2">
+          <AlertTriangle className="w-4 h-4 text-[#DC2626] flex-shrink-0" />
+          <span>{error}</span>
         </div>
-      ) : (
-        <ConsolidatedReportView report={report} onExportDossier={handleExportDossier} />
-      )}
+      ) : report ? (
+        <ConsolidatedReportView
+          report={report}
+          onExportDossier={handleExportDossier}
+        />
+      ) : null}
     </div>
   );
 };

@@ -8,14 +8,11 @@ import {
   CheckCircle2,
   Clock,
   ExternalLink,
-  Filter,
   Lock,
   RefreshCw,
   RotateCcw,
-  ShieldCheck,
   UserCheck,
   X,
-  XCircle,
 } from 'lucide-react';
 import { api } from '../../api/apiClient.js';
 import type {
@@ -34,52 +31,33 @@ interface ReviewQueueTabProps {
 const CATEGORY_LABELS: Record<ReviewCategory, { label: string; color: string; desc: string }> = {
   medication_identity_clarification: {
     label: 'Medication Identity Clarification',
-    color: 'bg-amber-100 text-amber-900 border-amber-300',
+    color: 'bg-[#FEF3C7] text-[#92400E] border-[#FDE68A]',
     desc: 'Uncertain drug order, unverified candidate, or brand/generic ambiguity requiring verification.',
   },
   missing_prescription_instructions: {
     label: 'Missing Prescription Instructions',
-    color: 'bg-orange-100 text-orange-900 border-orange-300',
+    color: 'bg-[#FFEDD5] text-[#9A3412] border-[#FED7AA]',
     desc: 'Missing dosage, route, frequency, or administration instructions.',
   },
   potentially_significant_interaction: {
     label: 'Potentially Significant Interaction',
-    color: 'bg-red-100 text-red-900 border-red-300',
+    color: 'bg-[#FEE2E2] text-[#991B1B] border-[#FECACA]',
     desc: 'Severe pharmacokinetic/pharmacodynamic conflict requiring clinical pharmacist sign-off.',
   },
   insufficient_clinical_evidence: {
     label: 'Insufficient Clinical Evidence',
-    color: 'bg-purple-100 text-purple-900 border-purple-300',
+    color: 'bg-[#F3E8FF] text-[#6B21A8] border-[#E9D5FF]',
     desc: 'Clinical database gap or missing evidence requiring practitioner assessment.',
   },
   conflicting_scheduling_constraints: {
     label: 'Conflicting Scheduling Constraints',
-    color: 'bg-blue-100 text-blue-900 border-blue-300',
+    color: 'bg-[#D7DEFF] text-[#1747E8] border-[#C0CEFF]',
     desc: 'Mandatory absorption or food-drug constraint clash that cannot be auto-resolved.',
   },
   schedule_review: {
     label: 'Circadian Schedule Approval',
-    color: 'bg-emerald-100 text-emerald-900 border-emerald-300',
+    color: 'bg-[#ECFDF5] text-[#065F46] border-[#A7F3D0]',
     desc: 'Proposed 24-hour diurnal administration draft ready for final clinician sign-off.',
-  },
-};
-
-const ROLE_PERMISSIONS_GUIDE: Record<ReviewerRole, { title: string; allowed: string[] }> = {
-  clinical_pharmacist: {
-    title: 'Clinical Pharmacist',
-    allowed: ['All medication, interaction, evidence, constraint, and schedule reviews.'],
-  },
-  attending_physician: {
-    title: 'Attending Physician',
-    allowed: ['All clinical reviews, dose adjustments, and final schedule sign-off.'],
-  },
-  medical_director: {
-    title: 'Medical Director',
-    allowed: ['Full authority across all clinical categories.'],
-  },
-  registered_nurse: {
-    title: 'Registered Nurse',
-    allowed: ['Scheduling constraints and administration routine reviews. (Cannot override interactions or verify drug identities).'],
   },
 };
 
@@ -109,11 +87,9 @@ export const ReviewQueueTab: React.FC<ReviewQueueTabProps> = ({
     setLoading(true);
     setError(null);
     try {
-      // First try to fetch pending reviews across system
       const pendingList = await api.getPendingReviews();
       setReviews(pendingList || []);
 
-      // If there are reviews, grab workflow ID from the first one to fetch approvals
       if (pendingList && pendingList.length > 0) {
         const wfId = pendingList[0].workflowId;
         setActiveWorkflowId(wfId);
@@ -121,7 +97,6 @@ export const ReviewQueueTab: React.FC<ReviewQueueTabProps> = ({
           const approvalList = await api.getWorkflowApprovals(wfId);
           setApprovals(approvalList || []);
         } catch {
-          // Approvals might be empty
           setApprovals([]);
         }
       } else {
@@ -150,7 +125,7 @@ export const ReviewQueueTab: React.FC<ReviewQueueTabProps> = ({
     e.preventDefault();
     if (!selectedReview) return;
 
-    // Client-side AI prevention check (also enforced strictly on server by Rule 4)
+    // AI Clinician Prevention (Rule 4)
     const lowerIdentity = reviewerIdentity.toLowerCase();
     if (
       lowerIdentity.includes('claude') ||
@@ -209,27 +184,23 @@ export const ReviewQueueTab: React.FC<ReviewQueueTabProps> = ({
   const invalidatedCount = reviews.filter((r) => r.status === 'invalidated').length;
 
   return (
-    <div className="space-y-6">
-      {/* Header Banner */}
-      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white rounded-xl p-5 shadow-sm border border-slate-800">
+    <div className="space-y-5">
+      {/* 1. Swiss Editorial Header */}
+      <div className="bg-white border border-[#E6E3E1] rounded-sm p-5 shadow-editorial relative overflow-hidden">
         <div className="flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-start gap-3">
-            <div className="w-10 h-10 rounded-xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center border border-indigo-500/30 flex-shrink-0 mt-0.5">
-              <ShieldCheck className="w-5 h-5 text-indigo-300" />
+          <div className="space-y-1 max-w-2xl">
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-[#1747E8] bg-[#F0F3FF] px-2 py-0.5 rounded-sm border border-[#D7DEFF]">
+                Clinical Safety Gate
+              </span>
+              <span className="text-xs text-[#777777]">Human-In-The-Loop Governance</span>
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-base font-bold text-white">
-                  Human Review &amp; Clinical Approval Gates
-                </h2>
-                <span className="px-2 py-0.5 rounded text-2xs font-bold bg-indigo-500/30 text-indigo-200 border border-indigo-400/40">
-                  Phase 4 Governance
-                </span>
-              </div>
-              <p className="text-xs text-slate-300 mt-1 max-w-2xl leading-relaxed">
-                Deterministic safety gates enforcing human clinician oversight. An unverified medication cannot be treated as confirmed, evidence gaps cannot be masked, and autonomous AI agents are strictly barred from approving clinical regimens.
-              </p>
-            </div>
+            <h2 className="text-lg font-bold text-[#171717] tracking-tight">
+              Clinical Review Queue &amp; Approval Authority
+            </h2>
+            <p className="text-xs text-[#525252] leading-relaxed">
+              Mandatory clinician review checkpoints. Candidate medications, pharmacokinetic conflicts, circadian schedule drafts, and clinical evidence gaps require authorized human practitioner sign-off before downstream execution.
+            </p>
           </div>
 
           <div className="flex items-center gap-2">
@@ -237,92 +208,96 @@ export const ReviewQueueTab: React.FC<ReviewQueueTabProps> = ({
               type="button"
               onClick={fetchReviews}
               disabled={loading}
-              className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 flex items-center gap-1.5 transition-colors disabled:opacity-50"
+              className="px-3 py-1.5 rounded-sm text-xs font-semibold text-[#171717] bg-[#FAF9F8] hover:bg-white border border-[#E6E3E1] hover:border-[#1747E8] flex items-center gap-1.5 transition-colors disabled:opacity-50"
             >
-              <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`w-3.5 h-3.5 text-[#777777] ${loading ? 'animate-spin' : ''}`} />
               <span>Refresh Queue</span>
             </button>
           </div>
         </div>
 
-        {/* 7 Rules Safety Summary Pills */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 mt-4 pt-4 border-t border-slate-800/80 text-2xs text-slate-300">
-          <div className="flex items-center gap-2 p-2 rounded-lg bg-slate-800/60 border border-slate-700/50">
-            <Lock className="w-3.5 h-3.5 text-amber-400 flex-shrink-0" />
-            <span><strong>Rule 1 &amp; 2:</strong> Unverified meds blocked; evidence gaps never masked.</span>
+        {/* Safety Protocol Rule Highlights */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 mt-4 pt-3 border-t border-[#E6E3E1] text-[11px] text-[#525252]">
+          <div className="flex items-center gap-1.5 p-2 bg-[#FAF9F8] rounded-sm border border-[#E6E3E1]">
+            <Lock className="w-3.5 h-3.5 text-[#B45309] flex-shrink-0" />
+            <span><strong>Rules 1 &amp; 2:</strong> Unverified meds blocked; evidence gaps never masked.</span>
           </div>
-          <div className="flex items-center gap-2 p-2 rounded-lg bg-slate-800/60 border border-slate-700/50">
-            <AlertTriangle className="w-3.5 h-3.5 text-red-400 flex-shrink-0" />
-            <span><strong>Rule 3:</strong> Unresolved hard constraints block schedule approval.</span>
+          <div className="flex items-center gap-1.5 p-2 bg-[#FAF9F8] rounded-sm border border-[#E6E3E1]">
+            <AlertTriangle className="w-3.5 h-3.5 text-[#DC2626] flex-shrink-0" />
+            <span><strong>Rule 3:</strong> Unresolved conflicts block schedule release.</span>
           </div>
-          <div className="flex items-center gap-2 p-2 rounded-lg bg-slate-800/60 border border-slate-700/50">
-            <UserCheck className="w-3.5 h-3.5 text-blue-400 flex-shrink-0" />
-            <span><strong>Rule 4 &amp; 7:</strong> AI signoff forbidden; human role matrix enforced.</span>
+          <div className="flex items-center gap-1.5 p-2 bg-[#FAF9F8] rounded-sm border border-[#E6E3E1]">
+            <UserCheck className="w-3.5 h-3.5 text-[#1747E8] flex-shrink-0" />
+            <span><strong>Rules 4 &amp; 7:</strong> AI clinician signoff strictly barred.</span>
           </div>
-          <div className="flex items-center gap-2 p-2 rounded-lg bg-slate-800/60 border border-slate-700/50">
-            <RotateCcw className="w-3.5 h-3.5 text-purple-400 flex-shrink-0" />
-            <span><strong>Rule 5 &amp; 6:</strong> Stale artifact invalidation; separate approval records.</span>
+          <div className="flex items-center gap-1.5 p-2 bg-[#FAF9F8] rounded-sm border border-[#E6E3E1]">
+            <RotateCcw className="w-3.5 h-3.5 text-[#777777] flex-shrink-0" />
+            <span><strong>Rules 5 &amp; 6:</strong> Stale artifact auto-invalidation logged.</span>
           </div>
         </div>
       </div>
 
-      {/* Metrics Row */}
+      {/* 2. Compact Editorial Metrics */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <div className="p-3.5 rounded-xl border bg-white border-amber-200 shadow-xs flex items-center justify-between">
+        <div className={`p-3.5 rounded-sm border shadow-editorial flex items-center justify-between ${
+          pendingCount > 0
+            ? 'bg-[#FEF3C7]/40 border-[#FDE68A]'
+            : 'bg-white border-[#E6E3E1]'
+        }`}>
           <div>
-            <div className="text-2xs font-bold uppercase text-amber-700">Awaiting Action</div>
-            <div className="text-2xl font-bold text-amber-900 mt-0.5">{pendingCount}</div>
-            <div className="text-2xs text-slate-500">Pending clinician review</div>
+            <div className="text-[10px] font-bold uppercase tracking-wider text-[#92400E]">Pending Attention</div>
+            <div className="text-2xl font-bold text-[#171717] tabular-nums mt-0.5">{pendingCount}</div>
+            <div className="text-[11px] text-[#777777]">Awaiting clinician review</div>
           </div>
-          <div className="w-10 h-10 rounded-lg bg-amber-50 flex items-center justify-center text-amber-600">
-            <Clock className="w-5 h-5" />
+          <div className="w-9 h-9 rounded-sm bg-[#FEF3C7] border border-[#FDE68A] flex items-center justify-center text-[#B45309]">
+            <Clock className="w-4 h-4" />
           </div>
         </div>
 
-        <div className="p-3.5 rounded-xl border bg-white border-emerald-200 shadow-xs flex items-center justify-between">
+        <div className="p-3.5 rounded-sm border bg-white border-[#E6E3E1] shadow-editorial flex items-center justify-between">
           <div>
-            <div className="text-2xs font-bold uppercase text-emerald-700">Approved Reviews</div>
-            <div className="text-2xl font-bold text-emerald-900 mt-0.5">{approvedCount}</div>
-            <div className="text-2xs text-slate-500">Clinician signed off</div>
+            <div className="text-[10px] font-bold uppercase tracking-wider text-[#065F46]">Approved Decisions</div>
+            <div className="text-2xl font-bold text-[#171717] tabular-nums mt-0.5">{approvedCount}</div>
+            <div className="text-[11px] text-[#777777]">Authorized by clinician</div>
           </div>
-          <div className="w-10 h-10 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-600">
-            <CheckCircle2 className="w-5 h-5" />
+          <div className="w-9 h-9 rounded-sm bg-[#ECFDF5] border border-[#A7F3D0] flex items-center justify-center text-[#059669]">
+            <CheckCircle2 className="w-4 h-4" />
           </div>
         </div>
 
-        <div className="p-3.5 rounded-xl border bg-white border-slate-200 shadow-xs flex items-center justify-between">
+        <div className="p-3.5 rounded-sm border bg-white border-[#E6E3E1] shadow-editorial flex items-center justify-between">
           <div>
-            <div className="text-2xs font-bold uppercase text-slate-600">Active Approvals</div>
-            <div className="text-2xl font-bold text-slate-900 mt-0.5">{approvals.length}</div>
-            <div className="text-2xs text-slate-500">
+            <div className="text-[10px] font-bold uppercase tracking-wider text-[#777777]">Immutable Records</div>
+            <div className="text-2xl font-bold text-[#171717] tabular-nums mt-0.5">{approvals.length}</div>
+            <div className="text-[11px] text-[#777777]">
               {invalidatedCount > 0 ? (
-                <span className="text-red-600 font-semibold">{invalidatedCount} invalidated</span>
+                <span className="text-[#DC2626] font-semibold">{invalidatedCount} invalidated</span>
               ) : (
-                'Immutable records logged'
+                'SQLite audit log active'
               )}
             </div>
           </div>
-          <div className="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center text-slate-600">
-            <Award className="w-5 h-5" />
+          <div className="w-9 h-9 rounded-sm bg-[#FAF9F8] border border-[#E6E3E1] flex items-center justify-center text-[#525252]">
+            <Award className="w-4 h-4" />
           </div>
         </div>
       </div>
 
-      {/* Filter Toolbar */}
-      <div className="flex flex-wrap items-center justify-between gap-3 p-3 bg-slate-50 border border-slate-200 rounded-xl">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-2xs font-bold text-slate-500 uppercase flex items-center gap-1">
-            <Filter className="w-3.5 h-3.5" /> Status:
+      {/* 3. Filter Toolbar */}
+      <div className="flex flex-wrap items-center justify-between gap-3 p-3 bg-white border border-[#E6E3E1] rounded-sm shadow-editorial">
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="text-[10px] font-bold text-[#777777] uppercase tracking-wider mr-1">
+            Status:
           </span>
           {(['all', 'pending', 'approved', 'rejected', 'invalidated'] as const).map((s) => (
             <button
               key={s}
               type="button"
               onClick={() => setStatusFilter(s)}
-              className={`px-2.5 py-1 rounded-md text-xs font-semibold capitalize transition-colors ${
+              className={`px-2.5 py-1 rounded-sm text-xs font-semibold capitalize transition-colors ${
                 statusFilter === s
-                  ? 'bg-slate-900 text-white shadow-2xs'
-                  : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'
+                  ? 'bg-[#1747E8] text-white'
+                  : 'bg-[#FAF9F8] text-[#525252] border border-[#E6E3E1] hover:bg-white hover:text-[#171717]'
               }`}
             >
               {s}
@@ -331,14 +306,14 @@ export const ReviewQueueTab: React.FC<ReviewQueueTabProps> = ({
         </div>
 
         <div className="flex items-center gap-2">
-          <label htmlFor="category-select" className="text-2xs font-bold text-slate-500 uppercase">
+          <label htmlFor="category-select" className="text-[10px] font-bold text-[#777777] uppercase tracking-wider">
             Category:
           </label>
           <select
             id="category-select"
             value={categoryFilter}
             onChange={(e) => setCategoryFilter(e.target.value)}
-            className="text-xs bg-white border border-slate-300 rounded-md px-2.5 py-1 text-slate-800 font-medium focus:ring-1 focus:ring-indigo-500 focus:outline-none"
+            className="text-xs bg-[#FAF9F8] border border-[#E6E3E1] rounded-sm px-2.5 py-1 text-[#171717] font-medium focus:bg-white focus:border-[#1747E8] focus:ring-1 focus:ring-[#1747E8] transition-colors"
           >
             <option value="all">All Categories ({reviews.length})</option>
             <option value="medication_identity_clarification">Medication Identity Clarification</option>
@@ -353,206 +328,213 @@ export const ReviewQueueTab: React.FC<ReviewQueueTabProps> = ({
 
       {/* Error Message */}
       {error && (
-        <div className="p-3 bg-red-50 border border-red-200 text-red-800 rounded-xl text-xs flex items-center gap-2">
-          <AlertCircle className="w-4 h-4 text-red-600 flex-shrink-0" />
+        <div className="p-3 bg-[#FEE2E2] border border-[#FECACA] text-[#991B1B] rounded-sm text-xs flex items-center gap-2">
+          <AlertCircle className="w-4 h-4 text-[#DC2626] flex-shrink-0" />
           <span>{error}</span>
         </div>
       )}
 
-      {/* Review Queue Items */}
+      {/* 4. Queue Items List */}
       <div className="space-y-3">
-        <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center justify-between">
+        <div className="flex items-center justify-between text-xs font-bold text-[#171717] uppercase tracking-wider">
           <span>Active Review Items ({filteredReviews.length})</span>
           {activeWorkflowId && (
-            <span className="text-2xs font-mono text-slate-400 font-normal">
+            <span className="text-[10px] font-mono text-[#777777] font-normal">
               Workflow: {activeWorkflowId}
             </span>
           )}
-        </h3>
+        </div>
 
         {loading ? (
-          <div className="p-8 text-center bg-white border border-slate-200 rounded-xl">
-            <RefreshCw className="w-6 h-6 animate-spin text-indigo-600 mx-auto mb-2" />
-            <p className="text-xs text-slate-500">Loading clinical review items...</p>
+          <div className="p-10 text-center bg-white border border-[#E6E3E1] rounded-sm">
+            <RefreshCw className="w-6 h-6 animate-spin text-[#1747E8] mx-auto mb-2" />
+            <p className="text-xs text-[#777777]">Loading clinical review items...</p>
           </div>
         ) : filteredReviews.length === 0 ? (
-          <div className="p-8 text-center bg-white border border-slate-200 rounded-xl">
-            <CheckCircle className="w-8 h-8 text-emerald-500 mx-auto mb-2" />
-            <h4 className="text-sm font-bold text-slate-800">No Review Requests In Queue</h4>
-            <p className="text-xs text-slate-500 mt-1 max-w-md mx-auto">
-              All clinical gates for this status are clear. If a candidate medication, drug-drug interaction warning, or conflicting scheduling constraint emerges, it will appear here.
+          <div className="p-10 text-center bg-white border border-[#E6E3E1] rounded-sm pattern-dots-subtle shadow-editorial">
+            <CheckCircle className="w-8 h-8 text-[#059669] mx-auto mb-2" />
+            <h4 className="text-sm font-bold text-[#171717]">No Items In Queue</h4>
+            <p className="text-xs text-[#777777] mt-1 max-w-md mx-auto">
+              All clinical gates for this status filter are clear. When unverified candidates, PK conflicts, or schedule conflicts arise, they appear here.
             </p>
           </div>
         ) : (
           filteredReviews.map((review) => {
             const catInfo = CATEGORY_LABELS[review.category] || {
               label: review.category,
-              color: 'bg-slate-100 text-slate-800 border-slate-300',
+              color: 'bg-[#FAF9F8] text-[#171717] border-[#E6E3E1]',
               desc: '',
             };
 
+            const isPending = review.status === 'pending';
+
             return (
-              <div
+              <article
                 key={review.id}
-                className={`p-4 rounded-xl border bg-white shadow-xs transition-all ${
-                  review.status === 'pending'
-                    ? 'border-amber-300 ring-1 ring-amber-400/30'
-                    : 'border-slate-200'
+                className={`p-4 rounded-sm border bg-white shadow-editorial transition-all ${
+                  isPending
+                    ? 'border-[#FDE68A] ring-1 ring-[#FDE68A]/60'
+                    : 'border-[#E6E3E1]'
                 }`}
               >
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div className="space-y-1.5 max-w-3xl">
+                <div className="flex flex-col md:flex-row md:items-start justify-between gap-3">
+                  <div className="space-y-2 flex-1 max-w-3xl">
+                    {/* Header tags: Category & Status */}
                     <div className="flex flex-wrap items-center gap-2">
-                      <span
-                        className={`px-2.5 py-0.5 rounded-md text-2xs font-bold border ${catInfo.color}`}
-                      >
+                      <span className={`px-2 py-0.5 rounded-sm text-[11px] font-bold border ${catInfo.color}`}>
                         {catInfo.label}
                       </span>
                       <span
-                        className={`px-2 py-0.5 rounded text-2xs font-bold uppercase ${
+                        className={`px-2 py-0.5 rounded-sm text-[10px] font-bold uppercase tracking-wider ${
                           review.status === 'pending'
-                            ? 'bg-amber-100 text-amber-800'
+                            ? 'bg-[#FEF3C7] text-[#92400E] border border-[#FDE68A]'
                             : review.status === 'approved'
-                              ? 'bg-emerald-100 text-emerald-800'
+                              ? 'bg-[#ECFDF5] text-[#065F46] border border-[#A7F3D0]'
                               : review.status === 'rejected'
-                                ? 'bg-red-100 text-red-800'
-                                : 'bg-slate-100 text-slate-700'
+                                ? 'bg-[#FEE2E2] text-[#991B1B] border border-[#FECACA]'
+                                : 'bg-[#FAF9F8] text-[#525252] border border-[#E6E3E1]'
                         }`}
                       >
                         {review.status}
                       </span>
-                      <span className="text-2xs text-slate-400 font-mono">
+                      <span className="text-[10px] text-[#777777] font-mono">
                         v{review.targetArtifactVersion ?? review.itemVersion} ({review.targetArtifactType || review.targetEntityType})
                       </span>
                     </div>
 
-                    <h4 className="text-sm font-bold text-slate-900">{review.reason}</h4>
+                    {/* 1. What requires review & 2. Why unresolved */}
+                    <h4 className="text-sm font-bold text-[#171717] tracking-tight">
+                      {review.reason}
+                    </h4>
 
+                    {/* 3. Evidence / Missing Info */}
                     {review.missingOrConflictingInfo && (
-                      <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-200 text-xs text-slate-700 flex items-start gap-2">
-                        <AlertCircle className="w-3.5 h-3.5 text-amber-600 mt-0.5 flex-shrink-0" />
+                      <div className="p-2.5 rounded-sm bg-[#FAF9F8] border border-[#E6E3E1] text-xs text-[#171717] flex items-start gap-2">
+                        <AlertCircle className="w-3.5 h-3.5 text-[#B45309] mt-0.5 flex-shrink-0" />
                         <div>
-                          <strong>Clinical Context / Missing Info:</strong>{' '}
-                          {review.missingOrConflictingInfo}
+                          <strong className="text-[#92400E]">Clinical Context / Missing Info:</strong>{' '}
+                          <span>{review.missingOrConflictingInfo}</span>
                         </div>
                       </div>
                     )}
 
-                    <div className="text-xs text-slate-600">
-                      <strong>Requested Action:</strong> {review.requestedReviewerAction}
+                    {/* 4. Requested Action */}
+                    <div className="text-xs text-[#525252]">
+                      <strong className="text-[#171717]">Permitted Action:</strong> {review.requestedReviewerAction}
                     </div>
 
                     {review.supportingEvidenceReferences && review.supportingEvidenceReferences.length > 0 && (
-                      <div className="text-2xs text-slate-500 flex items-center gap-1.5">
-                        <ExternalLink className="w-3 h-3 text-slate-400" />
-                        <span>Supporting Evidence: {review.supportingEvidenceReferences.join(', ')}</span>
+                      <div className="text-[11px] text-[#777777] flex items-center gap-1.5">
+                        <ExternalLink className="w-3 h-3 text-[#777777]" />
+                        <span>Evidence Reference: {review.supportingEvidenceReferences.join(', ')}</span>
                       </div>
                     )}
 
                     {review.reviewerIdentity && (
-                      <div className="text-2xs text-slate-500 pt-1 flex items-center gap-2">
-                        <UserCheck className="w-3.5 h-3.5 text-emerald-600" />
+                      <div className="text-[11px] text-[#525252] pt-1 flex items-center gap-2 border-t border-[#E6E3E1]">
+                        <UserCheck className="w-3.5 h-3.5 text-[#059669]" />
                         <span>
-                          Reviewed by <strong>{review.reviewerIdentity}</strong> ({review.reviewerRole || 'Clinician'}) at {new Date(review.resolvedAt || '').toLocaleString()}
+                          Resolved by <strong>{review.reviewerIdentity}</strong> ({review.reviewerRole || 'Clinician'}) at {new Date(review.resolvedAt || '').toLocaleString()}
                         </span>
                       </div>
                     )}
                   </div>
 
-                  <div className="flex flex-col items-end gap-2 flex-shrink-0">
-                    <span className="text-2xs text-slate-400">
+                  {/* 5. Resolution Action Button */}
+                  <div className="flex flex-col items-start md:items-end gap-2 flex-shrink-0 pt-2 md:pt-0 border-t md:border-t-0 border-[#E6E3E1]">
+                    <span className="text-[10px] text-[#777777] tabular-nums">
                       Created: {new Date(review.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </span>
 
-                    {review.status === 'pending' ? (
+                    {isPending ? (
                       <button
                         type="button"
                         onClick={() => handleOpenResolveModal(review)}
-                        className="px-3.5 py-1.5 rounded-lg text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white flex items-center gap-1.5 shadow-xs transition-colors"
+                        className="px-3.5 py-1.5 rounded-sm text-xs font-bold bg-[#1747E8] hover:bg-[#1238C7] text-white flex items-center gap-1.5 shadow-editorial transition-colors focus:ring-2 focus:ring-[#1747E8]"
                       >
                         <UserCheck className="w-3.5 h-3.5" />
                         <span>Resolve Review</span>
                       </button>
                     ) : (
-                      <span className="text-2xs text-slate-400 italic">Resolved</span>
+                      <span className="text-xs text-[#777777] italic">Resolved</span>
                     )}
                   </div>
                 </div>
-              </div>
+              </article>
             );
           })
         )}
       </div>
 
-      {/* Immutable Approval Records Table (Rule 6) */}
-      <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-xs space-y-3">
-        <div className="flex items-center justify-between">
+      {/* 5. Immutable Approval Records Table (Rule 6) */}
+      <div className="bg-white border border-[#E6E3E1] rounded-sm p-4 shadow-editorial space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#E6E3E1] pb-2.5">
           <div className="flex items-center gap-2">
-            <Award className="w-4 h-4 text-indigo-600" />
-            <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+            <Award className="w-4 h-4 text-[#1747E8]" />
+            <h3 className="text-xs font-bold text-[#171717] uppercase tracking-wider">
               Immutable Approval Records (Audit Trail)
             </h3>
           </div>
-          <span className="text-2xs text-slate-400">
+          <span className="text-[10px] text-[#777777]">
             Recorded in persistent SQLite database separately from workflow state
           </span>
         </div>
 
         {approvals.length === 0 ? (
-          <p className="text-xs text-slate-500 py-3 text-center italic">
+          <p className="text-xs text-[#777777] py-3 text-center italic">
             No permanent approval records logged for this session yet.
           </p>
         ) : (
           <div className="overflow-x-auto">
             <table className="min-w-full text-xs text-left">
-              <thead className="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200">
+              <thead className="bg-[#FAF9F8] text-[#777777] font-semibold border-b border-[#E6E3E1] text-[11px] uppercase tracking-wider">
                 <tr>
                   <th className="py-2 px-3">Approval ID</th>
                   <th className="py-2 px-3">Category</th>
                   <th className="py-2 px-3">Decision</th>
                   <th className="py-2 px-3">Reviewer &amp; Role</th>
-                  <th className="py-2 px-3">Target Artifact &amp; Version</th>
+                  <th className="py-2 px-3">Target Artifact</th>
                   <th className="py-2 px-3">Status</th>
                   <th className="py-2 px-3">Timestamp</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 text-slate-700">
+              <tbody className="divide-y divide-[#E6E3E1] text-[#171717]">
                 {approvals.map((appr) => (
-                  <tr key={appr.approvalId} className="hover:bg-slate-50/50">
-                    <td className="py-2 px-3 font-mono text-2xs text-slate-500">{appr.approvalId}</td>
+                  <tr key={appr.approvalId} className="hover:bg-[#FAF9F8]/60 transition-colors">
+                    <td className="py-2 px-3 font-mono text-[10px] text-[#777777]">{appr.approvalId}</td>
                     <td className="py-2 px-3 font-medium">{CATEGORY_LABELS[appr.category]?.label || appr.category}</td>
                     <td className="py-2 px-3">
                       <span
-                        className={`px-2 py-0.5 rounded text-2xs font-bold capitalize ${
+                        className={`px-2 py-0.5 rounded-sm text-[10px] font-bold uppercase tracking-wider ${
                           appr.decision === 'approved'
-                            ? 'bg-emerald-100 text-emerald-800'
+                            ? 'bg-[#ECFDF5] text-[#065F46] border border-[#A7F3D0]'
                             : appr.decision === 'rejected'
-                              ? 'bg-red-100 text-red-800'
-                              : 'bg-blue-100 text-blue-800'
+                              ? 'bg-[#FEE2E2] text-[#991B1B] border border-[#FECACA]'
+                              : 'bg-[#D7DEFF] text-[#1747E8] border border-[#C0CEFF]'
                         }`}
                       >
                         {appr.decision}
                       </span>
                     </td>
                     <td className="py-2 px-3">
-                      <div className="font-semibold">{appr.reviewerIdentity}</div>
-                      <div className="text-2xs text-slate-400 capitalize">{appr.reviewerRole?.replace('_', ' ')}</div>
+                      <div className="font-semibold text-[#171717]">{appr.reviewerIdentity}</div>
+                      <div className="text-[10px] text-[#777777] capitalize">{appr.reviewerRole?.replace('_', ' ')}</div>
                     </td>
-                    <td className="py-2 px-3 text-2xs font-mono">
+                    <td className="py-2 px-3 text-[11px] font-mono text-[#525252]">
                       {appr.targetArtifactType} (v{appr.targetArtifactVersion})
                     </td>
                     <td className="py-2 px-3">
                       {appr.validUntilStale ? (
-                        <span className="px-2 py-0.5 rounded text-2xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                        <span className="px-1.5 py-0.5 rounded-sm text-[10px] font-bold bg-[#ECFDF5] text-[#065F46] border border-[#A7F3D0]">
                           Fresh &amp; Valid
                         </span>
                       ) : (
-                        <span className="px-2 py-0.5 rounded text-2xs font-bold bg-red-50 text-red-700 border border-red-200">
-                          Invalidated (Stale)
+                        <span className="px-1.5 py-0.5 rounded-sm text-[10px] font-bold bg-[#FEE2E2] text-[#991B1B] border border-[#FECACA]">
+                          Invalidated / Stale
                         </span>
                       )}
                     </td>
-                    <td className="py-2 px-3 text-2xs text-slate-500">
+                    <td className="py-2 px-3 text-[11px] text-[#777777] tabular-nums">
                       {new Date(appr.decidedAt).toLocaleString()}
                     </td>
                   </tr>
@@ -563,183 +545,166 @@ export const ReviewQueueTab: React.FC<ReviewQueueTabProps> = ({
         )}
       </div>
 
-      {/* Resolution Modal */}
+      {/* 6. Resolve Review Modal */}
       {resolveModalOpen && selectedReview && (
         <div
           role="dialog"
           aria-modal="true"
           aria-labelledby="resolve-modal-title"
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-[#171717]/50 backdrop-blur-xs p-4"
         >
-          <div className="bg-white rounded-2xl shadow-xl max-w-xl w-full border border-slate-200 overflow-hidden flex flex-col max-h-[90vh]">
-            <div className="p-4 bg-slate-900 text-white flex items-center justify-between">
+          <div className="bg-white rounded-sm border border-[#E6E3E1] shadow-xl w-full max-w-xl overflow-hidden animate-in fade-in zoom-in-95 duration-100">
+            <div className="flex items-center justify-between p-4 border-b border-[#E6E3E1] bg-[#FAF9F8]">
               <div className="flex items-center gap-2">
-                <ShieldCheck className="w-5 h-5 text-indigo-400" />
-                <h3 id="resolve-modal-title" className="text-sm font-bold">
-                  Clinical Review Sign-off
+                <UserCheck className="w-5 h-5 text-[#1747E8]" />
+                <h3 id="resolve-modal-title" className="text-sm font-bold text-[#171717]">
+                  Resolve Clinical Review Request
                 </h3>
               </div>
               <button
                 type="button"
                 onClick={() => setResolveModalOpen(false)}
-                className="text-slate-400 hover:text-white"
-                aria-label="Close modal"
+                className="p-1 text-[#777777] hover:text-[#171717] rounded-sm transition-colors"
               >
-                <X className="w-5 h-5" />
+                <X className="w-4 h-4" />
               </button>
             </div>
 
-            <form onSubmit={handleSubmitResolution} className="p-5 overflow-y-auto space-y-4">
-              {/* Item Summary */}
-              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1.5">
-                <div className="text-2xs font-bold uppercase text-slate-500">Target Item</div>
-                <div className="text-xs font-bold text-slate-800">{selectedReview.reason}</div>
-                <div className="text-2xs text-slate-600">
-                  <strong>Requested Action:</strong> {selectedReview.requestedReviewerAction}
-                </div>
-                <div className="text-2xs font-mono text-slate-400">
-                  Artifact: {selectedReview.targetArtifactType || selectedReview.targetEntityType} (v{selectedReview.targetArtifactVersion ?? selectedReview.itemVersion})
-                </div>
-              </div>
-
-              {/* AI Warning Banner (Rule 4) */}
-              <div className="p-3 bg-amber-50 border border-amber-300 rounded-xl text-xs text-amber-900 flex items-start gap-2">
-                <Lock className="w-4 h-4 text-amber-700 mt-0.5 flex-shrink-0" />
-                <div>
-                  <strong>Rule 4 Enforced:</strong> Licensed clinician identity required. Autonomous AI agents cannot sign off on clinical reviews or impersonate clinicians.
-                </div>
-              </div>
-
+            <form onSubmit={handleSubmitResolution} className="p-5 space-y-4">
               {modalError && (
-                <div className="p-3 bg-red-50 border border-red-200 text-red-800 rounded-xl text-xs flex items-center gap-2">
-                  <AlertOctagon className="w-4 h-4 text-red-600 flex-shrink-0" />
-                  <span>{modalError}</span>
+                <div className="p-3 bg-[#FEE2E2] border border-[#FECACA] text-[#991B1B] rounded-sm text-xs flex items-start gap-2">
+                  <AlertOctagon className="w-4 h-4 text-[#DC2626] flex-shrink-0 mt-0.5" />
+                  <div>
+                    <strong>Verification Blocked:</strong> {modalError}
+                  </div>
                 </div>
               )}
 
-              {/* Decision Selector */}
+              {/* Item Summary */}
+              <div className="p-3 bg-[#FAF9F8] rounded-sm border border-[#E6E3E1] text-xs space-y-1">
+                <div className="text-[10px] font-bold uppercase tracking-wider text-[#777777]">Target Clinical Finding</div>
+                <div className="font-bold text-[#171717]">{selectedReview.reason}</div>
+                <div className="text-[#525252] font-mono text-[11px]">
+                  Target Version: v{selectedReview.targetArtifactVersion ?? selectedReview.itemVersion}
+                </div>
+              </div>
+
+              {/* Decision Choice */}
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                  Clinical Decision
+                <label className="text-xs font-bold text-[#171717] block mb-1.5">
+                  Clinical Determination
                 </label>
                 <div className="grid grid-cols-3 gap-2">
                   <button
                     type="button"
                     onClick={() => setDecision('approved')}
-                    className={`py-2 px-3 rounded-lg text-xs font-bold border transition-colors flex items-center justify-center gap-1.5 ${
+                    className={`py-2 px-3 text-xs font-bold rounded-sm border transition-all ${
                       decision === 'approved'
-                        ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
-                        : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                        ? 'bg-[#ECFDF5] text-[#065F46] border-[#059669] ring-1 ring-[#059669]'
+                        : 'bg-white text-[#525252] border-[#E6E3E1] hover:bg-[#FAF9F8]'
                     }`}
                   >
-                    <CheckCircle2 className="w-4 h-4" />
-                    <span>Approve</span>
+                    Approve / Sign Off
                   </button>
-
                   <button
                     type="button"
                     onClick={() => setDecision('modified')}
-                    className={`py-2 px-3 rounded-lg text-xs font-bold border transition-colors flex items-center justify-center gap-1.5 ${
+                    className={`py-2 px-3 text-xs font-bold rounded-sm border transition-all ${
                       decision === 'modified'
-                        ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
-                        : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                        ? 'bg-[#D7DEFF] text-[#1747E8] border-[#1747E8] ring-1 ring-[#1747E8]'
+                        : 'bg-white text-[#525252] border-[#E6E3E1] hover:bg-[#FAF9F8]'
                     }`}
                   >
-                    <UserCheck className="w-4 h-4" />
-                    <span>Modify</span>
+                    Approve Modified
                   </button>
-
                   <button
                     type="button"
                     onClick={() => setDecision('rejected')}
-                    className={`py-2 px-3 rounded-lg text-xs font-bold border transition-colors flex items-center justify-center gap-1.5 ${
+                    className={`py-2 px-3 text-xs font-bold rounded-sm border transition-all ${
                       decision === 'rejected'
-                        ? 'bg-red-600 text-white border-red-600 shadow-xs'
-                        : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                        ? 'bg-[#FEE2E2] text-[#991B1B] border-[#DC2626] ring-1 ring-[#DC2626]'
+                        : 'bg-white text-[#525252] border-[#E6E3E1] hover:bg-[#FAF9F8]'
                     }`}
                   >
-                    <XCircle className="w-4 h-4" />
-                    <span>Reject</span>
+                    Reject Order
                   </button>
                 </div>
               </div>
 
-              {/* Reviewer Role (Rule 7) */}
-              <div>
-                <label htmlFor="reviewer-role-select" className="block text-xs font-bold text-slate-700 mb-1">
-                  Licensed Clinical Role (Rule 7 Permissions Matrix)
-                </label>
-                <select
-                  id="reviewer-role-select"
-                  value={reviewerRole}
-                  onChange={(e) => setReviewerRole(e.target.value as ReviewerRole)}
-                  className="w-full text-xs bg-white border border-slate-300 rounded-lg px-3 py-2 text-slate-800 font-medium focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                >
-                  <option value="clinical_pharmacist">Clinical Pharmacist (Authorized for all reviews)</option>
-                  <option value="attending_physician">Attending Physician (Authorized for all reviews)</option>
-                  <option value="medical_director">Medical Director (Full oversight)</option>
-                  <option value="registered_nurse">Registered Nurse (Scheduling &amp; routine constraints only)</option>
-                </select>
-                <p className="text-2xs text-slate-500 mt-1">
-                  {ROLE_PERMISSIONS_GUIDE[reviewerRole].allowed[0]}
-                </p>
+              {/* Reviewer Identity & Role */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label htmlFor="reviewer-name" className="text-xs font-bold text-[#171717] block mb-1">
+                    Licensed Clinician Name *
+                  </label>
+                  <input
+                    id="reviewer-name"
+                    type="text"
+                    required
+                    value={reviewerIdentity}
+                    onChange={(e) => setReviewerIdentity(e.target.value)}
+                    placeholder="e.g. Dr. Sarah Lin, PharmD"
+                    className="w-full text-xs bg-[#FAF9F8] border border-[#E6E3E1] rounded-sm px-3 py-1.5 text-[#171717] focus:bg-white focus:border-[#1747E8] focus:ring-1 focus:ring-[#1747E8]"
+                  />
+                  <span className="text-[10px] text-[#777777] mt-0.5 block">
+                    AI agent names are blocked by Rule 4 safety gate.
+                  </span>
+                </div>
+
+                <div>
+                  <label htmlFor="reviewer-role" className="text-xs font-bold text-[#171717] block mb-1">
+                    Clinical Role *
+                  </label>
+                  <select
+                    id="reviewer-role"
+                    value={reviewerRole}
+                    onChange={(e) => setReviewerRole(e.target.value as ReviewerRole)}
+                    className="w-full text-xs bg-[#FAF9F8] border border-[#E6E3E1] rounded-sm px-3 py-1.5 text-[#171717] font-medium focus:bg-white focus:border-[#1747E8] focus:ring-1 focus:ring-[#1747E8]"
+                  >
+                    <option value="clinical_pharmacist">Clinical Pharmacist</option>
+                    <option value="attending_physician">Attending Physician</option>
+                    <option value="medical_director">Medical Director</option>
+                    <option value="registered_nurse">Registered Nurse</option>
+                  </select>
+                </div>
               </div>
 
-              {/* Reviewer Identity */}
+              {/* Rationale & Notes */}
               <div>
-                <label htmlFor="reviewer-identity-input" className="block text-xs font-bold text-slate-700 mb-1">
-                  Reviewer Name &amp; Credentials
-                </label>
-                <input
-                  id="reviewer-identity-input"
-                  type="text"
-                  value={reviewerIdentity}
-                  onChange={(e) => setReviewerIdentity(e.target.value)}
-                  placeholder="e.g. Dr. Sarah Lin, PharmD"
-                  required
-                  className="w-full text-xs bg-white border border-slate-300 rounded-lg px-3 py-2 text-slate-800 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                />
-              </div>
-
-              {/* Clinical Notes / Rationale */}
-              <div>
-                <label htmlFor="reviewer-notes-input" className="block text-xs font-bold text-slate-700 mb-1">
-                  Clinical Rationale / Notes (Recorded in Permanent Audit Log)
+                <label htmlFor="reviewer-notes" className="text-xs font-bold text-[#171717] block mb-1">
+                  Clinical Rationale / Notes (Optional)
                 </label>
                 <textarea
-                  id="reviewer-notes-input"
+                  id="reviewer-notes"
+                  rows={3}
                   value={reviewerNotes}
                   onChange={(e) => setReviewerNotes(e.target.value)}
-                  placeholder="Provide clinical justification for this review decision..."
-                  rows={3}
-                  className="w-full text-xs bg-white border border-slate-300 rounded-lg p-2.5 text-slate-800 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                  placeholder="Document specific monitoring, dose justification, or clinical reasoning..."
+                  className="w-full text-xs bg-[#FAF9F8] border border-[#E6E3E1] rounded-sm p-2 text-[#171717] focus:bg-white focus:border-[#1747E8] focus:ring-1 focus:ring-[#1747E8]"
                 />
               </div>
 
-              <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-200">
+              {/* Modal Buttons */}
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-[#E6E3E1]">
                 <button
                   type="button"
                   onClick={() => setResolveModalOpen(false)}
-                  disabled={isSubmitting}
-                  className="px-4 py-2 rounded-lg text-xs font-semibold text-slate-600 hover:text-slate-800 border border-slate-300 hover:bg-slate-50"
+                  className="px-3.5 py-1.5 text-xs font-semibold text-[#525252] bg-[#FAF9F8] hover:bg-[#E6E3E1] border border-[#E6E3E1] rounded-sm transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="px-5 py-2 rounded-lg text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white flex items-center gap-1.5 shadow-xs transition-colors disabled:opacity-50"
+                  className="px-4 py-1.5 text-xs font-bold text-white bg-[#1747E8] hover:bg-[#1238C7] rounded-sm transition-colors shadow-editorial disabled:opacity-50 flex items-center gap-1.5"
                 >
                   {isSubmitting ? (
                     <>
                       <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                      <span>Signing off...</span>
+                      <span>Recording...</span>
                     </>
                   ) : (
-                    <>
-                      <CheckCircle2 className="w-3.5 h-3.5" />
-                      <span>Confirm &amp; Record Approval</span>
-                    </>
+                    <span>Submit Resolution</span>
                   )}
                 </button>
               </div>

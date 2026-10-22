@@ -35,25 +35,25 @@ export const ConsolidatedReportView: React.FC<ConsolidatedReportViewProps> = ({
   ).length;
 
   return (
-    <article aria-labelledby="dossier-heading" className="space-y-5">
+    <article aria-labelledby="dossier-heading" className="space-y-4">
       {/* 1. Header & Actions Strip */}
-      <header className="bg-white p-5 rounded-xl border border-slate-200 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <header className="bg-white p-5 rounded-sm border border-[#E6E3E1] shadow-editorial flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-lg bg-clinical-100 text-clinical-700">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-sm bg-[#F0F3FF] text-[#1747E8] border border-[#D7DEFF] flex items-center justify-center flex-shrink-0">
               <FileText className="w-5 h-5" aria-hidden="true" />
             </div>
             <div>
-              <div className="flex items-center gap-2">
-                <h2 id="dossier-heading" className="text-base font-bold text-slate-900">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h2 id="dossier-heading" className="text-base font-bold text-[#171717] tracking-tight">
                   Consolidated Clinical Dossier
                 </h2>
-                <span className="px-2 py-0.5 rounded text-2xs font-bold bg-cyan-100 text-cyan-800 border border-cyan-200 font-mono">
-                  {report.reportId.slice(0, 15)}...
+                <span className="px-1.5 py-0.2 rounded-sm text-[10px] font-bold bg-[#D7DEFF] text-[#1747E8] border border-[#C0CEFF] font-mono">
+                  {report.reportId.slice(0, 16)}...
                 </span>
               </div>
-              <p className="text-xs text-slate-500">
-                Patient: <strong>{report.patientSummary.name}</strong> (MRN: {report.patientSummary.mrn}, Age: {report.patientSummary.age}) &bull; {report.patientSummary.careSetting}
+              <p className="text-xs text-[#777777] mt-0.5">
+                Patient: <strong className="text-[#171717]">{report.patientSummary.name}</strong> (MRN: {report.patientSummary.mrn}, Age: {report.patientSummary.age}y) &bull; {report.patientSummary.careSetting}
               </p>
             </div>
           </div>
@@ -64,9 +64,9 @@ export const ConsolidatedReportView: React.FC<ConsolidatedReportViewProps> = ({
             <button
               type="button"
               onClick={onExportDossier}
-              className="px-3 py-1.5 text-xs font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 rounded-lg transition-colors flex items-center gap-1.5 shadow-2xs"
+              className="px-3 py-1.5 text-xs font-semibold text-[#171717] bg-[#FAF9F8] border border-[#E6E3E1] hover:bg-white hover:border-[#1747E8] rounded-sm transition-colors flex items-center gap-1.5 shadow-editorial"
             >
-              <ArrowDownToLine className="w-3.5 h-3.5 text-slate-500" aria-hidden="true" />
+              <ArrowDownToLine className="w-3.5 h-3.5 text-[#777777]" aria-hidden="true" />
               <span>Export Dossier (JSON)</span>
             </button>
           )}
@@ -74,7 +74,7 @@ export const ConsolidatedReportView: React.FC<ConsolidatedReportViewProps> = ({
           <button
             type="button"
             onClick={() => window.print()}
-            className="px-3 py-1.5 text-xs font-semibold text-clinical-700 bg-clinical-50 hover:bg-clinical-100 border border-clinical-200 rounded-lg transition-colors flex items-center gap-1.5 shadow-2xs"
+            className="px-3 py-1.5 text-xs font-semibold text-white bg-[#1747E8] hover:bg-[#1238C7] rounded-sm transition-colors flex items-center gap-1.5 shadow-editorial"
           >
             <Printer className="w-3.5 h-3.5" aria-hidden="true" />
             <span>Print Report</span>
@@ -85,68 +85,68 @@ export const ConsolidatedReportView: React.FC<ConsolidatedReportViewProps> = ({
       {/* 2. Safety Notice */}
       <aside
         aria-label="Clinical Prototype Notice"
-        className="p-3.5 bg-amber-50 border-l-4 border-amber-500 text-amber-950 rounded-r-xl text-xs flex items-start gap-2.5 shadow-xs"
+        className="p-3 bg-[#FFFDF5] border border-[#FDE68A] text-[#171717] rounded-sm text-xs flex items-start gap-2.5 shadow-editorial"
       >
-        <ShieldAlert className="w-4 h-4 text-amber-700 flex-shrink-0 mt-0.5" aria-hidden="true" />
+        <ShieldAlert className="w-4 h-4 text-[#B45309] flex-shrink-0 mt-0.5" aria-hidden="true" />
         <div className="leading-relaxed">
-          <strong>CLINICAL DECISION SUPPORT PROTOTYPE:</strong> {report.clinicalDisclaimer}
+          <strong className="text-[#92400E]">CLINICAL DECISION SUPPORT PROTOTYPE:</strong> {report.clinicalDisclaimer}
         </div>
       </aside>
 
-      {/* 3. Executive KPI Dashboard Cards */}
+      {/* 3. KPI Metrics Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className="p-3.5 bg-white border border-slate-200 rounded-xl shadow-xs">
-          <div className="flex items-center justify-between text-slate-400 mb-1">
-            <Pill className="w-4 h-4 text-clinical-600" aria-hidden="true" />
-            <span className="text-2xs font-bold uppercase">Active Meds</span>
+        <div className="p-3.5 bg-white border border-[#E6E3E1] rounded-sm shadow-editorial">
+          <div className="flex items-center justify-between text-[#777777] mb-1">
+            <span className="text-[10px] font-bold uppercase tracking-wider">Active Meds</span>
+            <Pill className="w-4 h-4 text-[#1747E8]" aria-hidden="true" />
           </div>
-          <div className="text-xl font-bold text-slate-900">{report.activeMedications.length}</div>
-          <div className="text-2xs text-slate-500 mt-0.5">
+          <div className="text-2xl font-bold text-[#171717] tabular-nums">{report.activeMedications.length}</div>
+          <div className="text-[11px] text-[#777777] mt-0.5">
             {report.unconfirmedMedicationCount > 0 ? (
-              <span className="text-amber-600 font-semibold">{report.unconfirmedMedicationCount} unconfirmed</span>
+              <span className="text-[#B45309] font-semibold">{report.unconfirmedMedicationCount} unconfirmed</span>
             ) : (
-              <span className="text-emerald-700 font-semibold">All confirmed truth</span>
+              <span className="text-[#059669] font-semibold">All confirmed truth</span>
             )}
           </div>
         </div>
 
-        <div className="p-3.5 bg-white border border-slate-200 rounded-xl shadow-xs">
-          <div className="flex items-center justify-between text-slate-400 mb-1">
-            <Cpu className="w-4 h-4 text-cyan-600" aria-hidden="true" />
-            <span className="text-2xs font-bold uppercase">Interactions</span>
+        <div className="p-3.5 bg-white border border-[#E6E3E1] rounded-sm shadow-editorial">
+          <div className="flex items-center justify-between text-[#777777] mb-1">
+            <span className="text-[10px] font-bold uppercase tracking-wider">Interactions</span>
+            <Cpu className="w-4 h-4 text-[#1747E8]" aria-hidden="true" />
           </div>
-          <div className="text-xl font-bold text-slate-900">{report.interactionAnalysis.findings.length}</div>
-          <div className="text-2xs text-slate-500 mt-0.5">
+          <div className="text-2xl font-bold text-[#171717] tabular-nums">{report.interactionAnalysis.findings.length}</div>
+          <div className="text-[11px] text-[#777777] mt-0.5">
             {report.interactionAnalysis.contraindicatedCount > 0 ? (
-              <span className="text-red-600 font-bold">{report.interactionAnalysis.contraindicatedCount} Contraindicated</span>
+              <span className="text-[#DC2626] font-bold">{report.interactionAnalysis.contraindicatedCount} Contraindicated</span>
             ) : (
               <span>{report.interactionAnalysis.majorCount} Major</span>
             )}
           </div>
         </div>
 
-        <div className="p-3.5 bg-white border border-slate-200 rounded-xl shadow-xs">
-          <div className="flex items-center justify-between text-slate-400 mb-1">
-            <Clock className="w-4 h-4 text-clinical-600" aria-hidden="true" />
-            <span className="text-2xs font-bold uppercase">Dosing Slots</span>
+        <div className="p-3.5 bg-white border border-[#E6E3E1] rounded-sm shadow-editorial">
+          <div className="flex items-center justify-between text-[#777777] mb-1">
+            <span className="text-[10px] font-bold uppercase tracking-wider">Dosing Slots</span>
+            <Clock className="w-4 h-4 text-[#1747E8]" aria-hidden="true" />
           </div>
-          <div className="text-xl font-bold text-slate-900">{report.circadianCoordination.totalSlots}</div>
-          <div className="text-2xs text-emerald-700 font-semibold mt-0.5">
-            100% Doses Preserved
+          <div className="text-2xl font-bold text-[#171717] tabular-nums">{report.circadianCoordination.totalSlots}</div>
+          <div className="text-[11px] text-[#059669] font-semibold mt-0.5">
+            100% Preserved Doses
           </div>
         </div>
 
-        <div className="p-3.5 bg-white border border-slate-200 rounded-xl shadow-xs">
-          <div className="flex items-center justify-between text-slate-400 mb-1">
-            <AlertOctagon className={`w-4 h-4 ${immediateActionCount > 0 ? 'text-red-600' : 'text-emerald-600'}`} aria-hidden="true" />
-            <span className="text-2xs font-bold uppercase">Pharmacist Action</span>
+        <div className="p-3.5 bg-white border border-[#E6E3E1] rounded-sm shadow-editorial">
+          <div className="flex items-center justify-between text-[#777777] mb-1">
+            <span className="text-[10px] font-bold uppercase tracking-wider">Pharmacist Tasks</span>
+            <AlertOctagon className={`w-4 h-4 ${immediateActionCount > 0 ? 'text-[#DC2626]' : 'text-[#059669]'}`} aria-hidden="true" />
           </div>
-          <div className={`text-xl font-bold ${immediateActionCount > 0 ? 'text-red-700' : 'text-slate-900'}`}>
+          <div className={`text-2xl font-bold tabular-nums ${immediateActionCount > 0 ? 'text-[#DC2626]' : 'text-[#171717]'}`}>
             {report.itemsRequiringPharmacistReview.length}
           </div>
-          <div className="text-2xs text-slate-500 mt-0.5">
+          <div className="text-[11px] text-[#777777] mt-0.5">
             {immediateActionCount > 0 ? (
-              <span className="text-red-700 font-bold">{immediateActionCount} Immediate</span>
+              <span className="text-[#DC2626] font-bold">{immediateActionCount} Immediate</span>
             ) : (
               <span>Routine Monitoring</span>
             )}
@@ -154,26 +154,26 @@ export const ConsolidatedReportView: React.FC<ConsolidatedReportViewProps> = ({
         </div>
       </div>
 
-      {/* 4. Prioritized Pharmacist Review Checklist */}
-      <section aria-labelledby="checklist-heading" className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
+      {/* 4. Prioritized Action Checklist */}
+      <section aria-labelledby="checklist-heading" className="bg-white border border-[#E6E3E1] rounded-sm p-4 sm:p-5 shadow-editorial space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#E6E3E1] pb-3">
           <div>
-            <h3 id="checklist-heading" className="text-sm font-bold text-slate-900">
+            <h3 id="checklist-heading" className="text-sm font-bold text-[#171717]">
               Prioritized Clinical Pharmacist Action Checklist ({report.itemsRequiringPharmacistReview.length} items)
             </h3>
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-[#777777]">
               Actionable findings sorted by clinical urgency: immediate signoffs vs. routine clearance checks.
             </p>
           </div>
 
-          <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-lg text-2xs">
+          <div className="flex items-center gap-1 bg-[#FAF9F8] p-1 rounded-sm border border-[#E6E3E1] text-[11px]">
             <button
               type="button"
               onClick={() => setSelectedFilter('all')}
-              className={`px-2.5 py-1 rounded font-semibold transition-colors ${
+              className={`px-2.5 py-0.5 rounded-sm font-semibold transition-colors ${
                 selectedFilter === 'all'
-                  ? 'bg-white text-slate-900 shadow-2xs'
-                  : 'text-slate-600 hover:text-slate-900'
+                  ? 'bg-[#1747E8] text-white shadow-xs'
+                  : 'text-[#525252] hover:text-[#171717]'
               }`}
             >
               All ({report.itemsRequiringPharmacistReview.length})
@@ -181,10 +181,10 @@ export const ConsolidatedReportView: React.FC<ConsolidatedReportViewProps> = ({
             <button
               type="button"
               onClick={() => setSelectedFilter('immediate_action')}
-              className={`px-2.5 py-1 rounded font-semibold transition-colors ${
+              className={`px-2.5 py-0.5 rounded-sm font-semibold transition-colors ${
                 selectedFilter === 'immediate_action'
-                  ? 'bg-red-600 text-white shadow-2xs'
-                  : 'text-red-700 hover:bg-red-50'
+                  ? 'bg-[#DC2626] text-white shadow-xs'
+                  : 'text-[#DC2626] hover:bg-[#FEE2E2]'
               }`}
             >
               Immediate ({immediateActionCount})
@@ -192,10 +192,10 @@ export const ConsolidatedReportView: React.FC<ConsolidatedReportViewProps> = ({
             <button
               type="button"
               onClick={() => setSelectedFilter('pre_administration_signoff')}
-              className={`px-2.5 py-1 rounded font-semibold transition-colors ${
+              className={`px-2.5 py-0.5 rounded-sm font-semibold transition-colors ${
                 selectedFilter === 'pre_administration_signoff'
-                  ? 'bg-white text-slate-900 shadow-2xs'
-                  : 'text-slate-600 hover:text-slate-900'
+                  ? 'bg-[#1747E8] text-white shadow-xs'
+                  : 'text-[#525252] hover:text-[#171717]'
               }`}
             >
               Pre-Admin ({report.itemsRequiringPharmacistReview.filter((i) => i.urgency === 'pre_administration_signoff').length})
@@ -205,7 +205,7 @@ export const ConsolidatedReportView: React.FC<ConsolidatedReportViewProps> = ({
 
         <div className="space-y-2.5">
           {filteredReviewItems.length === 0 ? (
-            <div className="p-6 text-center text-xs text-slate-500">
+            <div className="p-8 text-center text-xs text-[#777777]">
               No review items matching selected urgency filter.
             </div>
           ) : (
@@ -217,18 +217,18 @@ export const ConsolidatedReportView: React.FC<ConsolidatedReportViewProps> = ({
       </section>
 
       {/* 5. 24-Hour Diurnal Schedule Overview */}
-      <section aria-labelledby="schedule-summary-heading" className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs space-y-4">
-        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+      <section aria-labelledby="schedule-summary-heading" className="bg-white border border-[#E6E3E1] rounded-sm p-4 sm:p-5 shadow-editorial space-y-4">
+        <div className="flex items-center justify-between border-b border-[#E6E3E1] pb-3">
           <div>
-            <h3 id="schedule-summary-heading" className="text-sm font-bold text-slate-900">
+            <h3 id="schedule-summary-heading" className="text-sm font-bold text-[#171717]">
               Circadian Timetable Summary
             </h3>
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-[#777777]">
               Deterministic 24-hour timeline synchronized with patient routine.
             </p>
           </div>
 
-          <span className="px-2.5 py-1 rounded text-2xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+          <span className="px-2 py-0.5 rounded-sm text-[10px] font-bold bg-[#ECFDF5] text-[#065F46] border border-[#A7F3D0]">
             Dose Preservation Guaranteed
           </span>
         </div>
@@ -237,27 +237,27 @@ export const ConsolidatedReportView: React.FC<ConsolidatedReportViewProps> = ({
           {report.circadianCoordination.slotsSummary.map((slot, idx) => (
             <div
               key={idx}
-              className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs space-y-1"
+              className="p-3 bg-[#FAF9F8] rounded-sm border border-[#E6E3E1] text-xs space-y-1"
             >
-              <div className="flex items-center justify-between text-2xs">
-                <span className="font-bold text-clinical-700">{slot.targetTime}</span>
-                <span className="px-1.5 py-0.2 rounded bg-slate-200/70 text-slate-700 font-mono text-3xs">
+              <div className="flex items-center justify-between text-[11px]">
+                <span className="font-bold text-[#1747E8]">{slot.targetTime}</span>
+                <span className="px-1.5 py-0.2 rounded-sm bg-white border border-[#E6E3E1] text-[#777777] font-mono text-[10px]">
                   {slot.doseCount} {slot.doseCount === 1 ? 'dose' : 'doses'}
                 </span>
               </div>
-              <div className="font-bold text-slate-900">{slot.slotName}</div>
-              <div className="text-3xs text-slate-500">{slot.mealRelation.replace(/_/g, ' ')}</div>
+              <div className="font-bold text-[#171717]">{slot.slotName}</div>
+              <div className="text-[10px] text-[#777777]">{slot.mealRelation.replace(/_/g, ' ')}</div>
             </div>
           ))}
         </div>
       </section>
 
       {/* 6. Provenance & Versioning Footer */}
-      <footer className="p-4 bg-slate-50 rounded-xl border border-slate-200 text-2xs text-slate-500 space-y-1">
-        <div className="font-bold text-slate-700 uppercase tracking-wider text-3xs">
-          Clinical Provenance &amp; Reference Versions
+      <footer className="p-3.5 bg-[#FAF9F8] rounded-sm border border-[#E6E3E1] text-[11px] text-[#777777] space-y-1">
+        <div className="font-bold text-[#171717] uppercase tracking-wider text-[10px]">
+          Clinical Provenance &amp; Engine Versions
         </div>
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-3xs font-mono">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[10px] font-mono text-[#525252]">
           <span>Orchestrator: {report.provenance.orchestratorVersion}</span>
           <span>Conflict Engine: {report.provenance.conflictEngineVersion}</span>
           <span>Chrono Engine: {report.provenance.chronoCoordinatorVersion}</span>
@@ -274,39 +274,39 @@ const ReviewItemCard: React.FC<{ item: PharmacistReviewItem }> = ({ item }) => {
 
   return (
     <div
-      className={`p-3.5 rounded-xl border text-xs space-y-1.5 transition-colors ${
+      className={`p-3.5 rounded-sm border text-xs space-y-1.5 transition-colors ${
         isImmediate
-          ? 'bg-red-50/40 border-red-200'
-          : 'bg-slate-50/70 border-slate-200'
+          ? 'bg-[#FFFDF5] border-[#FDE68A]'
+          : 'bg-[#FAF9F8] border-[#E6E3E1]'
       }`}
     >
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-2">
           {isImmediate ? (
-            <AlertOctagon className="w-4 h-4 text-red-600 flex-shrink-0" aria-hidden="true" />
+            <AlertOctagon className="w-4 h-4 text-[#DC2626] flex-shrink-0" aria-hidden="true" />
           ) : (
-            <Clock className="w-4 h-4 text-amber-600 flex-shrink-0" aria-hidden="true" />
+            <Clock className="w-4 h-4 text-[#B45309] flex-shrink-0" aria-hidden="true" />
           )}
-          <h4 className="font-bold text-slate-900">{item.title}</h4>
+          <h4 className="font-bold text-[#171717]">{item.title}</h4>
         </div>
 
         <span
-          className={`px-2 py-0.5 rounded text-3xs font-bold uppercase tracking-wide ${
-            isImmediate ? 'bg-red-100 text-red-800' : 'bg-slate-200/70 text-slate-700'
+          className={`px-1.5 py-0.5 rounded-sm text-[10px] font-bold uppercase tracking-wider ${
+            isImmediate ? 'bg-[#FEE2E2] text-[#991B1B] border border-[#FECACA]' : 'bg-white text-[#525252] border border-[#E6E3E1]'
           }`}
         >
           {item.urgency.replace(/_/g, ' ')}
         </span>
       </div>
 
-      <p className="text-2xs text-slate-700 leading-relaxed">{item.description}</p>
+      <p className="text-[11px] text-[#525252] leading-relaxed">{item.description}</p>
 
-      <div className="p-2.5 bg-white/90 rounded-lg border border-slate-200/70 text-2xs space-y-1">
+      <div className="p-2.5 bg-white rounded-sm border border-[#E6E3E1] text-[11px] space-y-1">
         <div>
-          <strong className="text-slate-900">Action:</strong>{' '}
-          <span className="text-slate-800 font-semibold">{item.actionableRecommendation}</span>
+          <strong className="text-[#171717]">Action:</strong>{' '}
+          <span className="text-[#1747E8] font-semibold">{item.actionableRecommendation}</span>
         </div>
-        <div className="text-3xs text-slate-500 italic">
+        <div className="text-[10px] text-[#777777] italic">
           Evidence: {item.evidenceCitation}
         </div>
       </div>
