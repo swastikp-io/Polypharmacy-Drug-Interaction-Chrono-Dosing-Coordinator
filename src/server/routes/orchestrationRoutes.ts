@@ -2,7 +2,14 @@ import { Router } from 'express';
 import type { WorkflowCoordinator } from '../services/orchestration/workflowCoordinator.js';
 import type { McpToolService } from '../services/mcp/mcpToolService.js';
 import type { PatientRepository } from '../repositories/patientRepository.js';
+import type { AgenticWorkflowOrchestrator } from '../services/orchestration/agenticWorkflowOrchestrator.js';
+import type { ToolRegistry } from '../services/orchestration/tools/toolRegistry.js';
+import type { ReviewRequestService } from '../services/orchestration/reviewRequestService.js';
 import {
+  AgenticWorkflowCreateInputSchema,
+  MedicationCorrectionInputSchema,
+  ReviewResolutionSchema,
+  ToolExecutionRequestSchema,
   WorkflowResumeRequestSchema,
   WorkflowRunOptionsSchema,
 } from '../../shared/orchestrationSchemas.js';
@@ -11,11 +18,18 @@ import { getActorFromRequest, getParam } from '../utils/requestUtils.js';
 export function createOrchestrationRouter(
   coordinator: WorkflowCoordinator,
   mcpToolService: McpToolService,
-  patientRepo: PatientRepository
+  patientRepo: PatientRepository,
+  agenticOrchestrator?: AgenticWorkflowOrchestrator,
+  toolRegistry?: ToolRegistry,
+  reviewService?: ReviewRequestService
 ): Router {
   const router = Router();
 
-  // 1. Start Workflow Run
+  // ==========================================
+  // 1. LEGACY REST WORKFLOW ENDPOINTS (Phase 5 compatibility)
+  // ==========================================
+
+  // Start Workflow Run
   router.post('/run', async (req, res, next) => {
     try {
       const actor = getActorFromRequest(req);
@@ -55,7 +69,7 @@ export function createOrchestrationRouter(
     }
   });
 
-  // 2. Get Workflow Run by ID
+  // Get Workflow Run by ID
   router.get('/run/:runId', async (req, res, next) => {
     try {
       const runId = getParam(req, 'runId');
@@ -86,7 +100,7 @@ export function createOrchestrationRouter(
     }
   });
 
-  // 3. Resume Paused Workflow
+  // Resume Paused Workflow
   router.post('/run/:runId/resume', async (req, res, next) => {
     try {
       const runId = getParam(req, 'runId');
@@ -108,7 +122,7 @@ export function createOrchestrationRouter(
     }
   });
 
-  // 4. Get Latest Consolidated Report for Patient
+  // Get Latest Consolidated Report for Patient
   router.get('/patient/:patientId/report', async (req, res, next) => {
     try {
       const patientId = getParam(req, 'patientId');
@@ -147,7 +161,7 @@ export function createOrchestrationRouter(
     }
   });
 
-  // 5. MCP Tool Invocation Endpoint (Strictly Validated)
+  // Legacy Scoped MCP Tool Invocation Endpoint
   router.post('/mcp/call', async (req, res, next) => {
     try {
       const toolName = req.body.name || req.body.toolName;
@@ -183,6 +197,316 @@ export function createOrchestrationRouter(
       next(err);
     }
   });
+
+  // ==========================================
+  // 2. AGENTIC ARCHITECTURE ENDPOINTS
+  // ==========================================
+
+  if (agenticOrchestrator) {
+    // Create Agentic Workflow
+    router.post('/agentic/workflows', async (req, res, next) => {
+      try {
+        const actor = getActorFromRequest(req);
+        const parsed = AgenticWorkflowCreateInputSchema.parse({
+          ...req.body,
+          actor: req.body.actor || actor,
+        });
+
+        const context = await agenticOrchestrator.createWorkflow({
+          patientId: parsed.patientId,
+          prescriptionDocumentId: parsed.prescriptionDocumentId,
+          requireExplicitConfirmation: parsed.requireExplicitConfirmation,
+          actor: parsed.actor,
+        });
+
+        res.status(201).json({
+          success: true,
+          data: context,
+        });
+      } catch (err: any) {
+        if (err.name === 'ZodError' || err.issues) {
+          res.status(400).json({
+            success: false,
+            error: `Validation failed: ${err.issues?.map((i: any) => `${i.path.join('.')}: ${i.message}`).join(', ') || err.message}`,
+            details: err.issues,
+          });
+          return;
+        }
+        next(err);
+      }
+    });
+
+    // Get Agentic Workflow by ID
+    router.get('/agentic/workflows/:workflowId', async (req, res, next) => {
+      try {
+        const workflowId = getParam(req, 'workflowId');
+        const context = agenticOrchestrator.getWorkflow(workflowId);
+
+        if (!context) {
+          res.status(404).json({
+            success: false,
+            error: {
+              code: 'WORKFLOW_NOT_FOUND',
+              message: `Workflow "${workflowId}" was not found.`,
+            },
+          });
+          return;
+        }
+
+        res.status(200).json({
+          success: true,
+          data: context,
+        });
+      } catch (err) {
+        next(err);
+      }
+    });
+
+    // Advance Agentic Workflow
+    router.post('/agentic/workflows/:workflowId/advance', async (req, res, next) => {
+      try {
+        const workflowId = getParam(req, 'workflowId');
+        const actor = req.body.actor || getActorFromRequest(req);
+
+        const updatedContext = await agenticOrchestrator.advanceWorkflow(workflowId, actor);
+
+        res.status(200).json({
+          success: true,
+          data: updatedContext,
+        });
+      } catch (err: any) {
+        res.status(400).json({
+          success: false,
+          error: err.message,
+          code: err.name || 'WORKFLOW_ADVANCE_ERROR',
+        });
+      }
+    });
+
+    // Confirm Medication Candidate
+    router.post('/agentic/workflows/:workflowId/confirm-candidate', async (req, res, next) => {
+      try {
+        const workflowId = getParam(req, 'workflowId');
+        const actor = req.body.actor || getActorFromRequest(req);
+        const candidateId = req.body.candidateId;
+        const justification = req.body.justification || 'Verified against medical record';
+
+        if (!candidateId) {
+          res.status(400).json({
+            success: false,
+            error: 'candidateId is required.',
+          });
+          return;
+        }
+
+        const updatedContext = await agenticOrchestrator.confirmMedicationCandidate(
+          workflowId,
+          candidateId,
+          actor,
+          justification
+        );
+
+        res.status(200).json({
+          success: true,
+          data: updatedContext,
+        });
+      } catch (err: any) {
+        res.status(400).json({
+          success: false,
+          error: err.message,
+        });
+      }
+    });
+
+    // Get Pending Reviews Across All Workflows
+    router.get('/agentic/reviews/pending', async (_req, res, next) => {
+      try {
+        const reviews = agenticOrchestrator.getReviewQueue(undefined, 'pending');
+        res.status(200).json({
+          success: true,
+          data: reviews,
+        });
+      } catch (err: any) {
+        next(err);
+      }
+    });
+
+    // Get Reviews for Workflow
+    router.get('/agentic/workflows/:workflowId/reviews', async (req, res, next) => {
+      try {
+        const workflowId = getParam(req, 'workflowId');
+        const status = req.query.status as string | undefined;
+        const reviews = agenticOrchestrator.getReviewQueue(workflowId, status);
+        res.status(200).json({
+          success: true,
+          data: reviews,
+        });
+      } catch (err: any) {
+        next(err);
+      }
+    });
+
+    // Get Approval Records for Workflow
+    router.get('/agentic/workflows/:workflowId/approvals', async (req, res, next) => {
+      try {
+        const workflowId = getParam(req, 'workflowId');
+        const approvals = agenticOrchestrator.getApprovalRecords(workflowId);
+        res.status(200).json({
+          success: true,
+          data: approvals,
+        });
+      } catch (err: any) {
+        next(err);
+      }
+    });
+
+    // Resolve Human Review Request
+    router.post('/agentic/workflows/:workflowId/reviews/:reviewId/resolve', async (req, res, next) => {
+      try {
+        const workflowId = getParam(req, 'workflowId');
+        const reviewId = getParam(req, 'reviewId');
+        const resolution = ReviewResolutionSchema.parse(req.body);
+
+        const updatedContext = await agenticOrchestrator.resolveHumanReview(
+          workflowId,
+          reviewId,
+          resolution
+        );
+
+        res.status(200).json({
+          success: true,
+          data: updatedContext,
+        });
+      } catch (err: any) {
+        res.status(400).json({
+          success: false,
+          error: err.message,
+          code: err.name,
+        });
+      }
+    });
+
+    // Correct Medication (Feedback Loop)
+    router.post('/agentic/workflows/:workflowId/correct-medication', async (req, res, next) => {
+      try {
+        const workflowId = getParam(req, 'workflowId');
+        const actor = req.body.actor || getActorFromRequest(req);
+        const medicationId = req.body.medicationId;
+        const justification = req.body.justification || 'Prescriber adjusted dose';
+
+        if (!medicationId) {
+          res.status(400).json({
+            success: false,
+            error: 'medicationId is required.',
+          });
+          return;
+        }
+
+        const updatedContext = await agenticOrchestrator.correctMedication(
+          workflowId,
+          medicationId,
+          actor,
+          justification
+        );
+
+        res.status(200).json({
+          success: true,
+          data: updatedContext,
+        });
+      } catch (err: any) {
+        res.status(400).json({
+          success: false,
+          error: err.message,
+        });
+      }
+    });
+
+    // Record Lab (Feedback Loop)
+    router.post('/agentic/workflows/:workflowId/record-lab', async (req, res, next) => {
+      try {
+        const workflowId = getParam(req, 'workflowId');
+        const actor = req.body.actor || getActorFromRequest(req);
+        const testName = req.body.testName;
+
+        if (!testName) {
+          res.status(400).json({
+            success: false,
+            error: 'testName is required.',
+          });
+          return;
+        }
+
+        const updatedContext = await agenticOrchestrator.recordNewLabData(
+          workflowId,
+          testName,
+          actor
+        );
+
+        res.status(200).json({
+          success: true,
+          data: updatedContext,
+        });
+      } catch (err: any) {
+        res.status(400).json({
+          success: false,
+          error: err.message,
+        });
+      }
+    });
+  }
+
+  // Tool Invocation via Typed ToolRegistry
+  if (toolRegistry) {
+    router.post('/agentic/tools/call', async (req, res, next) => {
+      try {
+        const parsed = ToolExecutionRequestSchema.parse(req.body);
+        const result = await toolRegistry.executeTool(
+          parsed.name,
+          parsed.arguments,
+          {
+            actor: parsed.actor,
+            actorRole: parsed.actorRole,
+            confirmationToken: parsed.confirmationToken,
+          }
+        );
+
+        if (!result.success) {
+          res.status(400).json({
+            success: false,
+            error: result.error?.message || 'Tool execution failed',
+            code: result.error?.code,
+            details: result.error?.details,
+          });
+          return;
+        }
+
+        res.status(200).json({
+          success: true,
+          data: {
+            toolName: result.toolName,
+            result: result.data,
+          },
+        });
+      } catch (err: any) {
+        if (err.name === 'ZodError' || err.issues) {
+          res.status(400).json({
+            success: false,
+            error: `Validation failed: ${err.issues?.map((i: any) => `${i.path.join('.')}: ${i.message}`).join(', ') || err.message}`,
+            details: err.issues,
+          });
+          return;
+        }
+        next(err);
+      }
+    });
+
+    router.get('/agentic/tools', (_req, res) => {
+      res.status(200).json({
+        success: true,
+        data: toolRegistry.listTools(),
+      });
+    });
+  }
 
   return router;
 }

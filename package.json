@@ -12,6 +12,8 @@
     "client:build": "node ./node_modules/vite/bin/vite.js build",
     "server:build": "node ./node_modules/typescript/bin/tsc -p tsconfig.server.json",
     "start": "node dist/server/index.js",
+    "db:seed": "node ./node_modules/tsx/dist/cli.mjs scripts/seed.ts",
+    "db:reset": "node ./node_modules/tsx/dist/cli.mjs scripts/seed.ts --reset",
     "test": "node ./node_modules/vitest/vitest.mjs run",
     "test:watch": "node ./node_modules/vitest/vitest.mjs",
     "typecheck": "node ./node_modules/typescript/bin/tsc --noEmit && node ./node_modules/typescript/bin/tsc -p tsconfig.server.json --noEmit && node ./node_modules/typescript/bin/tsc -p mcp-server/tsconfig.json --noEmit"

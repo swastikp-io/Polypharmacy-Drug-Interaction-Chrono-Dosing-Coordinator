@@ -3,6 +3,7 @@ import {
   Activity,
   AlertOctagon,
   Bot,
+  ClipboardCheck,
   Clock,
   Cpu,
   FileScan,
@@ -33,6 +34,7 @@ import { InteractionReviewWorkspace } from './interactions/InteractionReviewWork
 import { CircadianScheduleWorkspace } from './chrono/CircadianScheduleWorkspace.js';
 import { WorkflowOrchestratorModal } from './orchestration/WorkflowOrchestratorModal.js';
 import { ConsolidatedDossierTab } from './orchestration/ConsolidatedDossierTab.js';
+import { ReviewQueueTab } from './orchestration/ReviewQueueTab.js';
 import { PatientExportPurgeModal } from './governance/PatientExportPurgeModal.js';
 import { LabMeasurementList } from './LabMeasurementList.js';
 import { MedicationList } from './MedicationList.js';
@@ -96,7 +98,7 @@ export const PatientDashboard: React.FC<PatientDashboardProps> = ({
   onMedicationReconciled,
 }) => {
   const [activeTab, setActiveTab] = useState<
-    'dossier' | 'medications' | 'interactions' | 'chrono' | 'ocr' | 'duplicates' | 'allergies' | 'diagnoses' | 'labs' | 'audit' | 'agents'
+    'dossier' | 'reviews' | 'medications' | 'interactions' | 'chrono' | 'ocr' | 'duplicates' | 'allergies' | 'diagnoses' | 'labs' | 'audit' | 'agents'
   >('medications');
   const [workflowModalOpen, setWorkflowModalOpen] = useState(false);
   const [governanceModalOpen, setGovernanceModalOpen] = useState(false);
@@ -342,6 +344,22 @@ export const PatientDashboard: React.FC<PatientDashboardProps> = ({
 
         <button
           type="button"
+          onClick={() => setActiveTab('reviews')}
+          className={`px-4 py-2.5 text-xs font-semibold border-b-2 flex items-center gap-2 whitespace-nowrap transition-colors ${
+            activeTab === 'reviews'
+              ? 'border-indigo-600 text-indigo-900 bg-indigo-50/50 rounded-t-lg font-bold'
+              : 'border-transparent text-slate-600 hover:text-slate-900 hover:border-slate-300'
+          }`}
+        >
+          <ClipboardCheck className="w-4 h-4 text-indigo-600" aria-hidden="true" />
+          <span>Review Queue</span>
+          <span className="px-1.5 py-0.5 rounded text-2xs font-bold bg-amber-100 text-amber-900 border border-amber-300">
+            Phase 4
+          </span>
+        </button>
+
+        <button
+          type="button"
           onClick={() => setActiveTab('medications')}
           className={`px-4 py-2.5 text-xs font-semibold border-b-2 flex items-center gap-2 whitespace-nowrap transition-colors ${
             activeTab === 'medications'
@@ -491,6 +509,13 @@ export const PatientDashboard: React.FC<PatientDashboardProps> = ({
             mrn={patient.mrn}
             onOpenWorkflow={() => setWorkflowModalOpen(true)}
             onOpenGovernance={() => setGovernanceModalOpen(true)}
+          />
+        )}
+
+        {activeTab === 'reviews' && (
+          <ReviewQueueTab
+            patientId={patient.id}
+            onRefreshParent={onMedicationReconciled}
           />
         )}
 

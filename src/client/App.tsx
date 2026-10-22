@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import {
   AlertCircle,
+  Beaker,
   Pill,
   RefreshCw,
   ShieldAlert,
@@ -14,6 +15,7 @@ import { api } from './api/apiClient.js';
 import { PatientDashboard } from './components/PatientDashboard.js';
 import { PatientSelector } from './components/PatientSelector.js';
 import { SafetyNotice } from './components/SafetyNotice.js';
+import { SyntheticDataPanel } from './components/dev/SyntheticDataPanel.js';
 
 export const App: React.FC = () => {
   const [patients, setPatients] = useState<Patient[]>([]);
@@ -22,6 +24,7 @@ export const App: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isDevPanelOpen, setIsDevPanelOpen] = useState(false);
 
   // Load patients on mount
   useEffect(() => {
@@ -195,6 +198,15 @@ export const App: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setIsDevPanelOpen(true)}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 text-2xs font-bold tracking-tight shadow-2xs transition-colors"
+              title="Open Synthetic Dataset & Clinical Test Lab"
+            >
+              <Beaker className="w-3.5 h-3.5 text-indigo-600" aria-hidden="true" />
+              <span>Synthetic Test Lab</span>
+            </button>
             <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-2xs font-bold uppercase tracking-wider bg-emerald-50 text-emerald-800 border border-emerald-200">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
               SQLite Local-First
@@ -273,15 +285,28 @@ export const App: React.FC = () => {
                 onUpdateLab={handleUpdateLab}
                 onDeleteLab={handleDeleteLab}
                 onUpdateLabVerification={handleUpdateLabVerification}
-                onMedicationReconciled={async () => {
-                  if (selectedPatientId) await loadPatientProfile(selectedPatientId);
-                }}
               />
             )}
           </>
         )}
       </main>
 
+      <SyntheticDataPanel
+        isOpen={isDevPanelOpen}
+        onClose={() => setIsDevPanelOpen(false)}
+        patients={patients}
+        selectedPatientId={selectedPatientId}
+        onSelectPatient={(id) => {
+          setSelectedPatientId(id);
+          setIsDevPanelOpen(false);
+        }}
+        onDataChanged={async () => {
+          await loadPatients();
+          if (selectedPatientId) {
+            await loadPatientProfile(selectedPatientId);
+          }
+        }}
+      />
       {/* 4. Footer */}
       <footer className="bg-white border-t border-slate-200 mt-12 py-6 text-xs text-slate-500">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-3">

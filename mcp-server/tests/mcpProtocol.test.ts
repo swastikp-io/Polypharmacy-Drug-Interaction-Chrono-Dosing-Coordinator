@@ -30,10 +30,11 @@ describe('Phase 7: MCP Server - Protocol, Initialization & Stdio Purity', () => 
   });
 
   describe('Server Registration & ListTools', () => {
-    it('registers exactly 9 clinical decision-support tools with Zod schemas', async () => {
-      expect(MCP_TOOLS.length).toBe(9);
+    it('registers clinical decision-support and synthetic developer tools with Zod schemas', async () => {
+      expect(MCP_TOOLS.length).toBeGreaterThanOrEqual(15);
 
       const toolNames = MCP_TOOLS.map((t) => t.name);
+      // Core clinical tools
       expect(toolNames).toContain('list_patients');
       expect(toolNames).toContain('get_patient_medications');
       expect(toolNames).toContain('parse_prescription');
@@ -43,6 +44,23 @@ describe('Phase 7: MCP Server - Protocol, Initialization & Stdio Purity', () => 
       expect(toolNames).toContain('get_review_status');
       expect(toolNames).toContain('confirm_medication');
       expect(toolNames).toContain('get_patient_review_report');
+
+      // Synthetic developer & benchmark tools
+      expect(toolNames).toContain('list_synthetic_patients');
+      expect(toolNames).toContain('get_synthetic_medications');
+      expect(toolNames).toContain('load_ocr_fixture');
+      expect(toolNames).toContain('run_interaction_fixture');
+      expect(toolNames).toContain('run_schedule_fixture');
+      expect(toolNames).toContain('get_test_results');
+
+      // Agentic orchestrator tools
+      expect(toolNames).toContain('orchestrator_get_state');
+      expect(toolNames).toContain('orchestrator_step');
+      expect(toolNames).toContain('get_tool_execution_history');
+      expect(toolNames).toContain('get_agent_capabilities');
+      expect(toolNames).toContain('submit_candidate_medications');
+      expect(toolNames).toContain('propose_schedule_draft');
+      expect(toolNames).toContain('resolve_review_request');
 
       for (const tool of MCP_TOOLS) {
         expect(tool.description).toBeTruthy();

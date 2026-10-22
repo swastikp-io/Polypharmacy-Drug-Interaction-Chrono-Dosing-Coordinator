@@ -345,6 +345,30 @@ export const AUTHORITATIVE_CHRONO_RULES: AuthoritativeCircadianRule[] = [
       'Take with plain water only.',
     ],
   },
+
+  // 10. PARKINSONIAN AGENTS (CARBIDOPA / LEVODOPA)
+  {
+    ruleId: 'chrono-rule-carbidopa-levodopa',
+    ingredientMatch: 'levodopa',
+    targetSlot: 'slot_wake_fasted',
+    foodRelation: 'empty_stomach',
+    offsetMinutes: -45,
+    windowDurationMinutes: 45,
+    evidence: {
+      sourceAuthority: 'Movement Disorder Society Guidelines / FDA Sinemet Label',
+      citation: 'Mov Disord. 2018;33(8):1201-1207; FDA Sinemet Prescribing Information',
+      evidenceStrength: 'established_clinical',
+      rationale:
+        'Large neutral amino acids (LNAAs) from dietary protein compete directly with levodopa for carrier-mediated intestinal transport (LAT1) and transport across the blood-brain barrier. Taking 45-60 minutes before meals maximizes CNS bioavailability and prevents motor fluctuations ("delayed-on" and "dose failure").',
+      datasetVersion: '2026.1-chrono-synth',
+    },
+    administrationNotes:
+      'Take 45-60 minutes before meals on an empty stomach with a full glass of water. If severe nausea occurs early in therapy, take with a low-protein carbohydrate snack, never high-protein meals.',
+    specialPrecautions: [
+      'Separate from dietary protein (meat, dairy, eggs, protein shakes) by at least 1 hour.',
+      'Take on an empty stomach to optimize central bioavailability.',
+    ],
+  },
 ];
 
 export function findAuthoritativeRule(genericName: string): AuthoritativeCircadianRule | undefined {

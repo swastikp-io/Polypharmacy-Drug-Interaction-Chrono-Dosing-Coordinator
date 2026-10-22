@@ -176,6 +176,44 @@ const SYNTHETIC_INTERACTION_RULES: InteractionRule[] = [
     publicationDate: '2021-06-10',
     requiresClinicalReview: true,
   },
+  {
+    ruleId: 'rule-ddi-celecoxib-meloxicam',
+    datasetVersion: '2026.1.0',
+    category: 'duplicate_therapy',
+    severity: 'major',
+    evidenceLevel: 'established_clinical',
+    ingredientA: 'celecoxib',
+    ingredientB: 'meloxicam',
+    mechanism:
+      'Therapeutic class duplication: concurrent prescription of two systemic nonsteroidal anti-inflammatory drugs (NSAIDs). Both agents inhibit cyclooxygenase (COX-2 selective celecoxib and preferential COX-2 meloxicam), offering no additive analgesic efficacy while drastically compounding gastrointestinal mucosal injury, ulceration, and renal vasoconstriction.',
+    clinicalImpact:
+      'Synergistic risk of severe gastrointestinal bleeding, peptic ulcer perforation, acute kidney injury, and blunting of antihypertensive response in older adults. Multiplies bleeding risk when combined with oral anticoagulants.',
+    managementRecommendation:
+      'Discontinue one of the concurrent NSAID orders immediately. Coordinate across prescribers (Rheumatology and Urgent Care) to consolidate pain management regimen.',
+    sourceCitation:
+      'AGS Beers Criteria 2023 Update (Avoid multiple concurrent NSAIDs); American College of Rheumatology Clinical Guidelines; ISMP Duplicate Therapy Warnings.',
+    publicationDate: '2023-04-10',
+    requiresClinicalReview: true,
+  },
+  {
+    ruleId: 'rule-ddi-apixaban-meloxicam',
+    datasetVersion: '2026.1.0',
+    category: 'pharmacodynamic',
+    severity: 'major',
+    evidenceLevel: 'established_clinical',
+    ingredientA: 'apixaban',
+    ingredientB: 'meloxicam',
+    mechanism:
+      'Additive and synergistic pharmacodynamic inhibition of primary and secondary hemostasis. Apixaban selectively inhibits Factor Xa in the coagulation cascade, while meloxicam inhibits platelet cyclooxygenase (COX) and causes direct topical/systemic gastrointestinal mucosal injury.',
+    clinicalImpact:
+      'Markedly elevated risk of major upper gastrointestinal bleeding, systemic hemorrhage, and hematoma formation in older adults.',
+    managementRecommendation:
+      'Avoid concomitant NSAID therapy with oral Factor Xa inhibitors unless absolutely unavoidable. Evaluate non-NSAID alternatives.',
+    sourceCitation:
+      'FDA Eliquis Prescribing Information (Section 7.2); AGS Beers Criteria 2023 Update.',
+    publicationDate: '2023-05-04',
+    requiresClinicalReview: true,
+  },
 ];
 
 export class LocalInteractionEvidenceProvider implements IInteractionEvidenceProvider {

@@ -117,7 +117,7 @@ export class LocalOCREngine implements IOCREngine {
         const textParts = tjMatches.map((t) =>
           t.replace(/^\(/, '').replace(/\)\s*Tj$/, '').replace(/\\([()\\])/g, '$1')
         );
-        extractedStreams.push(textParts.join(' '));
+        extractedStreams.push(textParts.join('\n'));
       } else {
         // Check for ASCII readable text lines if stream is uncompressed
         const readable = streamBody

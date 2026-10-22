@@ -91,4 +91,26 @@ export class AuditService {
       changedFields: Object.keys(deletedRecord || {}),
     });
   }
+
+  logEvent(params: {
+    patientId: string;
+    entityType: string;
+    entityId: string;
+    action: string;
+    actor: string;
+    summary: string;
+    changedFields?: Record<string, any>;
+  }): AuditLog {
+    return this.auditRepo.record({
+      patientId: params.patientId,
+      entityType: params.entityType as any,
+      entityId: params.entityId,
+      action: params.action as any,
+      actor: params.actor,
+      summary: params.summary,
+      previousState: null,
+      newState: params.changedFields || null,
+      changedFields: Object.keys(params.changedFields || {}),
+    });
+  }
 }

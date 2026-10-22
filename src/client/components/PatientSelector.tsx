@@ -78,6 +78,12 @@ export const PatientSelector: React.FC<PatientSelectorProps> = ({
               >
                 <Edit3 className="w-4 h-4" aria-hidden="true" />
               </button>
+
+              {selectedPatient?.mrn.startsWith('SYNTH-') && (
+                <span className="inline-flex items-center px-2 py-0.5 rounded text-3xs font-black uppercase tracking-wider bg-amber-100 text-amber-900 border border-amber-300">
+                  SYNTHETIC / TEST DATA
+                </span>
+              )}
             </div>
           </div>
         </div>

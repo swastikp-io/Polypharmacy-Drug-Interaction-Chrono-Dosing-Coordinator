@@ -16,6 +16,7 @@ import { createAgentRouter } from './routes/agentRoutes.js';
 import { createAllergyRouter } from './routes/allergyRoutes.js';
 import { createAuditRouter } from './routes/auditRoutes.js';
 import { createChronoRouter } from './routes/chronoRoutes.js';
+import { createDevRouter } from './routes/devRoutes.js';
 import { createDiagnosisRouter } from './routes/diagnosisRoutes.js';
 import { createGovernanceRouter } from './routes/governanceRoutes.js';
 import { createInteractionRouter } from './routes/interactionRoutes.js';
@@ -43,6 +44,16 @@ import { CircadianScheduleCoordinator } from './services/chrono/scheduleCoordina
 import { WorkflowCoordinator } from './services/orchestration/workflowCoordinator.js';
 import { SecurityService } from './services/security/securityService.js';
 import { McpToolService } from './services/mcp/mcpToolService.js';
+import { WorkflowRepository } from './repositories/workflowRepository.js';
+import { ReviewRequestRepository } from './repositories/reviewRequestRepository.js';
+import { ToolExecutionRepository } from './repositories/toolExecutionRepository.js';
+import { ArtifactHistoryRepository } from './repositories/artifactHistoryRepository.js';
+import { ApprovalRecordRepository } from './repositories/approvalRecordRepository.js';
+import { ReviewRequestService } from './services/orchestration/reviewRequestService.js';
+import { ToolRegistry } from './services/orchestration/tools/toolRegistry.js';
+import { createClinicalTools } from './services/orchestration/tools/clinicalTools.js';
+import { AgenticWorkflowOrchestrator } from './services/orchestration/agenticWorkflowOrchestrator.js';
+import { DEFAULT_RETRY_POLICY } from '../shared/orchestrationTypes.js';
 
 export function createApp(database: Database.Database): Express {
   const app = express();
@@ -118,6 +129,50 @@ export function createApp(database: Database.Database): Express {
     ocrEngine
   );
 
+  // Agentic Workflow Architecture: Repositories, Review Service, Tool Registry & Orchestrator
+  const workflowRepo = new WorkflowRepository(database);
+  const reviewRequestRepo = new ReviewRequestRepository(database);
+  const toolExecutionRepo = new ToolExecutionRepository(database);
+  const artifactHistoryRepo = new ArtifactHistoryRepository(database);
+  const approvalRepo = new ApprovalRecordRepository(database);
+
+  const reviewRequestService = new ReviewRequestService(reviewRequestRepo, auditService, approvalRepo);
+
+  const toolRegistry = new ToolRegistry(toolExecutionRepo);
+  const clinicalTools = createClinicalTools({
+    patientRepo,
+    medRepo,
+    labRepo,
+    diagRepo,
+    auditService,
+    conflictEngine,
+    evidenceProvider: interactionEvidenceProvider,
+    chronoCoordinator,
+    chronoService,
+    workflowRepo,
+    reviewRequestRepo,
+    ocrNormalizationService: normalizationService,
+    ocrEngine,
+    fileStorageService,
+  });
+  for (const tool of clinicalTools) {
+    toolRegistry.registerTool(tool);
+  }
+
+  const agenticOrchestrator = new AgenticWorkflowOrchestrator(
+    workflowRepo,
+    reviewRequestService,
+    toolRegistry,
+    patientRepo,
+    medRepo,
+    labRepo,
+    auditService,
+    toolExecutionRepo,
+    artifactHistoryRepo,
+    DEFAULT_RETRY_POLICY,
+    approvalRepo
+  );
+
   // Phase 6: Safety, Security & MCP Tools Services
   const securityService = new SecurityService(
     database,
@@ -184,7 +239,14 @@ export function createApp(database: Database.Database): Express {
   app.use('/api/chrono', createChronoRouter(chronoService, patientRepo));
   app.use(
     '/api/orchestration',
-    createOrchestrationRouter(workflowCoordinator, mcpToolService, patientRepo)
+    createOrchestrationRouter(
+      workflowCoordinator,
+      mcpToolService,
+      patientRepo,
+      agenticOrchestrator,
+      toolRegistry,
+      reviewRequestService
+    )
   );
   app.use('/api/governance', createGovernanceRouter(securityService, patientRepo));
   app.use(
@@ -199,6 +261,7 @@ export function createApp(database: Database.Database): Express {
       renalHepaticAgent
     )
   );
+  app.use('/api/dev', createDevRouter(database));
 
   // 404 handler for unknown API routes
   app.use('/api/*', (req, res) => {

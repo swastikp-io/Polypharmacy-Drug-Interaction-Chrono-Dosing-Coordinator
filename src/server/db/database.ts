@@ -161,13 +161,125 @@ export function initializeSchema(db: Database.Database): void {
       FOREIGN KEY (patient_id) REFERENCES patients(id) ON DELETE CASCADE
     );
 
+    CREATE TABLE IF NOT EXISTS workflow_contexts (
+      id TEXT PRIMARY KEY,
+      patient_id TEXT NOT NULL,
+      state TEXT NOT NULL,
+      version INTEGER NOT NULL DEFAULT 1,
+      context_json TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      FOREIGN KEY (patient_id) REFERENCES patients(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS review_requests (
+      id TEXT PRIMARY KEY,
+      workflow_id TEXT NOT NULL,
+      category TEXT NOT NULL,
+      reason TEXT NOT NULL,
+      supporting_evidence_json TEXT NOT NULL,
+      missing_or_conflicting_info TEXT,
+      requested_action TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'pending',
+      item_version INTEGER NOT NULL DEFAULT 1,
+      target_entity_type TEXT NOT NULL,
+      target_entity_id TEXT NOT NULL,
+      target_artifact_type TEXT,
+      target_artifact_version INTEGER,
+      reviewer_identity TEXT,
+      reviewer_role TEXT,
+      reviewer_notes TEXT,
+      created_at TEXT NOT NULL,
+      resolved_at TEXT,
+      FOREIGN KEY (workflow_id) REFERENCES workflow_contexts(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS approval_records (
+      id TEXT PRIMARY KEY,
+      workflow_id TEXT NOT NULL,
+      review_request_id TEXT NOT NULL,
+      category TEXT NOT NULL,
+      target_entity_type TEXT NOT NULL,
+      target_entity_id TEXT NOT NULL,
+      target_artifact_type TEXT NOT NULL,
+      target_artifact_version INTEGER NOT NULL,
+      reviewer_identity TEXT NOT NULL,
+      reviewer_role TEXT NOT NULL,
+      decision TEXT NOT NULL,
+      rationale TEXT NOT NULL,
+      decided_at TEXT NOT NULL,
+      valid_until_stale INTEGER NOT NULL DEFAULT 1,
+      superseded_by TEXT,
+      created_at TEXT NOT NULL,
+      FOREIGN KEY (workflow_id) REFERENCES workflow_contexts(id) ON DELETE CASCADE,
+      FOREIGN KEY (review_request_id) REFERENCES review_requests(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS tool_executions (
+      id TEXT PRIMARY KEY,
+      workflow_id TEXT,
+      agent_id TEXT,
+      tool_name TEXT NOT NULL,
+      input_hash TEXT NOT NULL,
+      dependency_versions_json TEXT NOT NULL,
+      status TEXT NOT NULL,
+      started_at TEXT NOT NULL,
+      completed_at TEXT NOT NULL,
+      duration_ms INTEGER NOT NULL,
+      error_json TEXT,
+      result_summary TEXT,
+      created_at TEXT NOT NULL,
+      FOREIGN KEY (workflow_id) REFERENCES workflow_contexts(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS workflow_artifact_history (
+      id TEXT PRIMARY KEY,
+      workflow_id TEXT NOT NULL,
+      artifact_id TEXT NOT NULL,
+      artifact_type TEXT NOT NULL,
+      version INTEGER NOT NULL,
+      content_hash TEXT NOT NULL,
+      dependency_fingerprint TEXT NOT NULL,
+      reason_archived TEXT NOT NULL,
+      data_json TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      FOREIGN KEY (workflow_id) REFERENCES workflow_contexts(id) ON DELETE CASCADE
+    );
+
     CREATE INDEX IF NOT EXISTS idx_meds_patient ON medications(patient_id);
     CREATE INDEX IF NOT EXISTS idx_allergies_patient ON allergies(patient_id);
     CREATE INDEX IF NOT EXISTS idx_diagnoses_patient ON diagnoses(patient_id);
     CREATE INDEX IF NOT EXISTS idx_labs_patient ON lab_measurements(patient_id);
     CREATE INDEX IF NOT EXISTS idx_audit_patient ON audit_logs(patient_id);
     CREATE INDEX IF NOT EXISTS idx_chrono_patient ON chrono_schedules(patient_id);
+    CREATE INDEX IF NOT EXISTS idx_workflow_contexts_patient ON workflow_contexts(patient_id);
+    CREATE INDEX IF NOT EXISTS idx_review_requests_workflow ON review_requests(workflow_id);
+    CREATE INDEX IF NOT EXISTS idx_review_requests_status ON review_requests(status);
+    CREATE INDEX IF NOT EXISTS idx_tool_executions_workflow ON tool_executions(workflow_id);
+    CREATE INDEX IF NOT EXISTS idx_tool_executions_tool ON tool_executions(tool_name);
+    CREATE INDEX IF NOT EXISTS idx_artifact_history_workflow ON workflow_artifact_history(workflow_id);
+    CREATE INDEX IF NOT EXISTS idx_artifact_history_type ON workflow_artifact_history(artifact_type);
+    CREATE INDEX IF NOT EXISTS idx_approval_records_workflow ON approval_records(workflow_id);
+    CREATE INDEX IF NOT EXISTS idx_approval_records_review ON approval_records(review_request_id);
+    CREATE INDEX IF NOT EXISTS idx_approval_records_category ON approval_records(category);
   `);
+
+  // Migrate review_requests columns if needed for existing persistent databases
+  try {
+    const reviewColumns = db.prepare('PRAGMA table_info(review_requests)').all() as Array<{ name: string }>;
+    const colNames = new Set(reviewColumns.map((c) => c.name));
+    if (!colNames.has('reviewer_role')) {
+      db.prepare('ALTER TABLE review_requests ADD COLUMN reviewer_role TEXT').run();
+    }
+    if (!colNames.has('target_artifact_type')) {
+      db.prepare('ALTER TABLE review_requests ADD COLUMN target_artifact_type TEXT').run();
+    }
+    if (!colNames.has('target_artifact_version')) {
+      db.prepare('ALTER TABLE review_requests ADD COLUMN target_artifact_version INTEGER').run();
+    }
+  } catch {
+    // Ignore migration check if table does not exist yet
+  }
 }
 
 // Lazy singleton database instance for backward-compatibility with `import { db } from './db/database.js'`

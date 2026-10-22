@@ -121,13 +121,149 @@ npm run dev
 Open [http://localhost:5173](http://localhost:5173) in your browser.
 
 ### 3. Run Test Suite
-Executes all 72 unit and integration tests across 10 test suites via Vitest:
+Executes all 179 unit and integration tests across 22 test suites via Vitest:
 - Domain calculations, Cockcroft-Gault CrCl, eGFR KDIGO staging
 - Zod entity validation boundaries & epistemic verification schemas
 - SQLite persistence, audit trails, and comprehensive profile aggregation
 - Phase 2 local OCR adapter, extraction & normalization layers, and reconciliation endpoints
 - Phase 3 ingredient normalization, alias resolution, and duplicate ingredient detection
 - Phase 3 deterministic conflict engine, PK vs PD categorization, patient context prerequisites, and safe provider outage handling
+- Phase 4 circadian schedule engine, meal synchronization, minimum interval separation, and draft comparisons
+- Phase 5 agent orchestration workflows, state machines, and REST endpoints
+- Phase 6 security controls, input sanitization, safe path traversal prevention, and rate limits
+- Phase 7 MCP server stdio protocol purity, tool dispatchers, and Claude Desktop integration
+- Synthetic test harness: database seeding idempotency, reset guardrails, prescription OCR fixtures, clinical interaction fixtures, and circadian schedule scenarios
+- MCP synthetic tools integration and benchmark runners
+
+---
+
+## Synthetic Clinical Dataset & Test Harness
+
+The application features a comprehensive, fully synthetic clinical dataset and automated test harness designed specifically for evaluating polypharmacy coordination, drug-drug interaction detection, organ clearance thresholds, and circadian scheduling.
+
+> [!IMPORTANT]
+> **SYNTHETIC TEST DATA DISCLAIMER**  
+> All patients, medical record numbers, dates, laboratory measurements, prescriptions, and provider names are completely synthetic, fictional test fixtures created for software testing and algorithmic evaluation. They do **NOT** represent real patients or genuine medical records. Prescriptions and instructions must not be interpreted as real medical advice.
+
+### 1. Synthetic Patient Cohort Matrix (8 Diverse Scenarios)
+
+All synthetic patient profiles carry stable IDs (`p1111111...` through `p8888888...`), non-identifying synthetic MRNs (`SYNTH-*`), and are explicitly tagged `SYNTHETIC / TEST DATA` throughout the database and user interface.
+
+| ID | Name | Age / Sex | Synthetic MRN | Care Setting | Key Polypharmacy Scenarios & Test Focus |
+|---|---|---|---|---|---|
+| `p1` | **Eleanor Vance** | 78F | `SYNTH-10842` | Outpatient Geriatric Clinic | **Duplicate Acetaminophen Hazard**: Co-prescribed Percocet (oxycodone/APAP 5/325 mg) and OTC Tylenol Extra Strength (APAP 1000 mg) across surgical discharge and self-report; unverified newly imported Atorvastatin order. |
+| `p2` | **Arthur Pendelton** | 84M | `SYNTH-49211` | Anticoagulation Specialty Care | **Narrow Therapeutic Index & Circadian Polarization**: Warfarin + Amiodarone (CYP2C9 clearance inhibition, INR surge); Furosemide morning placement vs. Zolpidem bedtime placement to prevent nocturnal falls. |
+| `p3` | **Margaret Chen** | 72F | `SYNTH-63109` | Outpatient Endocrinology | **Chelation & Absorption Timing Conflict**: Levothyroxine absorption blunted by Calcium Carbonate; Alendronate weekly fasting upright requirement; multi-hour separation constraints. |
+| `p4` | **Harold Finch** | 81M | `SYNTH-77340` | Nephrology / Cardiology Care | **Severe Renal Impairment (CKD Stage 4)**: eGFR 24 mL/min, Serum Creatinine 2.8 mg/dL; Metformin lactic acidosis contraindication; Spironolactone hyperkalemia risk (K+ 5.2 mEq/L). |
+| `p5` | **Beatrice Holloway** | 76F | `SYNTH-88125` | Hepatology Specialty Care | **Hepatic Impairment / Cirrhosis (Child-Pugh B, MELD-Na 22)**: Total Bilirubin 3.4 mg/dL, Albumin 2.6 g/dL, INR 1.9, Ascites; 100:40 Spironolactone:Furosemide ratio; strict 2 g/day acetaminophen ceiling; hepatic encephalopathy lactulose titration. |
+| `p6` | **Walter Sterling** | 88M | `SYNTH-92401` | Primary Care & Urgent Care | **Multi-Prescriber Duplicate NSAID Duplication**: Rheumatology Celecoxib (Celebrex 200 mg) combined with Urgent Care Meloxicam (Mobic 7.5 mg) for acute shoulder sprain; compounding gastrointestinal ulceration risk alongside Apixaban anticoagulation. |
+| `p7` | **Evelyn Montgomery** | 69F | `SYNTH-33190` | Outpatient Family Medicine | **Intentional Clinical Data Gap & Ambiguity**: Zero laboratory records on file (testing missing renal baseline safety alert); incomplete sig ("Take as directed"); contradictory meal instructions on OTC iron supplement. |
+| `p8` | **Samuel O'Reilly** | 74M | `SYNTH-55823` | Neurology Movement Clinic | **Parkinsonian Dietary Protein Transport Separation**: Carbidopa/Levodopa (Sinemet) competing with dietary amino acids; bedtime Tamsulosin alpha-blocker first-dose syncope prevention; fall-risk psychotropic audit. |
+
+---
+
+### 2. Granular Medication Records (42 Records)
+
+The dataset populates 42 medication records across the 8 test patients, modeling all core pharmacological and administrative dimensions:
+- `id`: Stable deterministic identifier (e.g. `med-p1-1` through `med-p8-5`)
+- `patient_id`: Foreign key reference to synthetic patient UUID
+- `brand` and `generic_name`: Distinct trade and pharmacological designations
+- `active_ingredients_json`: Normalized active chemical entities with individual strengths
+- `salt`: Chemical salt forms (Hydrochloride, Tartrate, Besylate, Sodium, Dihydrate, Carbonate, etc.)
+- `strength` & `formulation`: Dosage form and release characteristics (Extended-Release, Delayed-Release, Solution, Tablet)
+- `prescribed_dose`, `route`, & `frequency`: Complete sig components
+- `administration_instructions` & `indication`: Meal relations, timing rationale, and clinical context
+- `prescriber` & `source`: Prescribing clinician identifier and EHR intake origin
+- `verification_status`: Epistemic status (`confirmed`, `unverified`, `unknown`)
+
+---
+
+### 3. Dedicated Synthetic Test Fixtures
+
+#### A. Synthetic Prescription Documents (8 Fixtures in `data/test-fixtures/`)
+All test documents are generated programmatically on disk with a prominent **`[SYNTHETIC TEST DATA]`** watermark:
+1. `rx_01_clean_printed.png`: High-quality printed baseline prescription (Glucophage XR + Lisinopril).
+2. `rx_02_low_quality_scan.png`: Low-resolution blurred mobile/fax scan (< 200 DPI) triggering low optical confidence alert (< 70%).
+3. `rx_03_ambiguous_name.png`: ISMP Look-Alike / Sound-Alike (LASA) critical hazard (Celexa vs Celebrex/Zyprexa).
+4. `rx_04_missing_dose.png`: Incomplete prescription omitting strength/dose; validates that the system never guesses missing doses.
+5. `rx_05_duplicate_brands.png`: Duplicate active ingredient under two trade names (Naprosyn + Anaprox).
+6. `rx_06_conflicting_instructions.png`: Contradictory administration instructions ("Take on empty stomach with heavy breakfast meals").
+7. `rx_07_missing_frequency.png`: Incomplete signature lacking dosing frequency ("Take 1 tablet").
+8. `rx_08_multipage_discharge.pdf`: Multi-medication PDF discharge summary verifying text stream extraction.
+
+#### B. Clinical Interaction Fixtures (12 Scenarios)
+1. `fix-ix-01`: Verified-reference match (Apixaban + Naproxen major bleed).
+2. `fix-ix-02`: Verified-reference contraindication (Oxycodone + Zolpidem profound CNS/respiratory depression).
+3. `fix-ix-03`: Negative control pair absent from rules (Metformin + Levothyroxine; 0 false alerts).
+4. `fix-ix-04`: Duplicate active ingredient hazard (Acetaminophen from Percocet + OTC Tylenol).
+5. `fix-ix-05`: Duplicate therapeutic class (Celecoxib + Meloxicam dual NSAID therapy).
+6. `fix-ix-06`: Uncertain / unmapped ingredient identity (Herbal extract supplement data gap).
+7. `fix-ix-07`: Missing clinical prerequisite (Lisinopril + Spironolactone with missing eGFR).
+8. `fix-ix-08`: Stale interaction dataset detection (> 180 days since revision).
+9. `fix-ix-09`: Reference provider outage resilience (Graceful degraded state without crash).
+10. `fix-ix-10`: Theoretical mechanism not promoted to major clinical alert (Atorvastatin + Amlodipine CYP3A4 sharing).
+11. `fix-ix-11`: Organ clearance contraindication (Metformin in severe CKD 4).
+12. `fix-ix-12`: Physicochemical chelation window (Levothyroxine + Calcium Carbonate >= 4h).
+
+#### C. Circadian Schedule Scenarios (8 Scenarios)
+1. `fix-sched-01`: Meal-relative synchronization (Glipizide with morning breakfast).
+2. `fix-sched-02`: Circadian polar placement (Morning Furosemide vs Bedtime Zolpidem).
+3. `fix-sched-03`: Minimum interval separation (Levothyroxine vs Calcium Carbonate >= 4 hours).
+4. `fix-sched-04`: Incompatible timing constraints (Bedtime fasted vs Bedtime with food).
+5. `fix-sched-05`: Unresolved food interaction (Grapefruit juice CYP3A4 intestinal avoidance).
+6. `fix-sched-06`: Missing prescribed frequency schedule halt.
+7. `fix-sched-07`: Schedule construction safety gate (Unverified newly imported orders).
+8. `fix-sched-08`: Parkinsonian dietary protein separation (Levodopa dosed 45–60 min before meals).
+
+#### D. Synthetic Renal & Hepatic Laboratory Records (27 Measurements)
+Includes normal, abnormal, and missing-data profiles with explicit distinctions between measured laboratory values (serum creatinine, ALT, AST, total bilirubin, serum albumin, potassium) and derived clinical estimates (eGFR, CrCl, Child-Pugh, MELD-Na).
+
+---
+
+### 4. Database Seeding & Safe Reset Operations
+
+The application provides dedicated CLI scripts and API routes for database lifecycle management:
+
+```bash
+# Idempotently seed or update synthetic profiles without duplicating records
+npm run db:seed
+
+# Reset and re-seed the dedicated test database with safety verification
+npm run db:reset
+```
+
+#### Safe Reset Guardrails & Invariants:
+1. **Mandatory Confirmation Token**: Reset operations require an exact confirmation token (`CONFIRM_RESET_TEST_DATASET`). Any call with missing or incorrect tokens throws a fatal validation error.
+2. **Synthetic MRN Isolation**: Reset queries are strictly constrained to records with `SYNTH-` prefixed MRNs (`mrn LIKE 'SYNTH-%'`). Non-synthetic or production patient records are never deleted.
+3. **Preservation of Verified Truth**: The idempotent seeder (`seedSyntheticData`) uses `INSERT OR IGNORE`. If a clinician has verified or updated a medication record, subsequent seed runs will never overwrite the clinician's verification status or prescriber annotations.
+
+---
+
+### 5. Developer Synthetic Data Panel (UI)
+
+A developer-only management modal is integrated directly into the React user interface:
+- **Header Trigger**: Click the **"Synthetic Test Lab"** button (Beaker icon) in the application header.
+- **Cohort Metrics**: Live KPI cards displaying total synthetic patients (8), active medications (42), and laboratory measurements (27).
+- **Instant Patient Switcher**: Switch to any of the 8 complex geriatric polypharmacy scenarios in one click.
+- **Interactive Fixture Runners**:
+  - Run prescription OCR documents through optical extraction and drug normalization.
+  - Run pharmacokinetic & pharmacodynamic interaction rules against test scenarios.
+  - Run circadian schedule coordinator across meal-relative and temporal separation scenarios.
+- **Guarded Reset Modal**: A two-step reset modal requiring literal confirmation input before purging and re-seeding the test dataset.
+
+---
+
+### 6. MCP Integration for Claude Desktop & AI Agents
+
+The Model Context Protocol (MCP) server exposes 6 dedicated synthetic dataset and test tools:
+- `list_synthetic_patients`: Lists all 8 synthetic patient profiles and clinical test scenarios.
+- `get_synthetic_medications`: Retrieves synthetic medication records with pharmacological details.
+- `load_ocr_fixture`: Loads an OCR prescription fixture and executes local normalization.
+- `run_interaction_fixture`: Executes conflict engine against interaction test fixtures.
+- `run_schedule_fixture`: Tests circadian schedule constraints against schedule scenarios.
+- `get_test_results`: Retrieves an aggregated test fixture inventory and verification status.
+
+---
 - REST API integration tests for all patient, medication, OCR, and interaction endpoints
 
 ```bash
@@ -524,6 +660,12 @@ The **Polypharmacy Coordinator MCP Server** exposes the clinical decision-suppor
 | `get_review_status` | Summarizes workflow orchestration state, unconfirmed orders, and high-priority action items. | `patientId` *(required)* | Explicitly identifies pending clinical confirmations. |
 | `confirm_medication` | Clinician-authorized state change marking an order as verified clinical truth. | `medicationId`, `actor`, `confirmationToken`, `justification` | Guarded by `"CONFIRM_MUTATION"`; records audit log. |
 | `get_patient_review_report` | Compiles a full consolidated clinical dossier for multidisciplinary review. | `patientId` *(required)* | Structured report with data gaps, conflicts, and provenance. |
+| `list_synthetic_patients` | Lists all 8 synthetic test cohort patients with scenario summaries, clinical focus, and non-identifying IDs. | `scenarioFilter` *(optional)* | All records strictly tagged `SYNTHETIC / TEST DATA`. |
+| `get_synthetic_medications` | Retrieves synthetic medication records for a test patient including pharmacological properties, prescribers, and status. | `patientId` *(required)* | Preserves explicit synthetic provenance and clinical indications. |
+| `load_ocr_fixture` | Loads a prescription fixture from `data/test-fixtures/`, executes local OCR and drug normalization, and compares against assertions. | `fixtureId` *(required)* | Operates exclusively on pre-generated synthetic test fixtures. |
+| `run_interaction_fixture` | Executes PK/PD conflict engine against a synthetic interaction test scenario, verifying rule matching and data gaps. | `fixtureId` *(required)* | Explicit hypothetical test rule assertions; no fabricated clinical facts. |
+| `run_schedule_fixture` | Runs circadian coordinator on a synthetic schedule scenario, asserting interval separation, meal timing, and conflict gates. | `scenarioId` *(required)* | Validates deterministic chrono-rules without altering patient regimen. |
+| `get_test_results` | Retrieves aggregated synthetic test fixture inventory and verification status across OCR, interaction, and schedule scenarios. | `category` *(all/ocr/interaction/schedule)* | Summarizes test harness health and coverage metrics. |
 
 ---
 
@@ -604,3 +746,704 @@ Once connected, you can prompt Claude to coordinate clinical decision-support:
 - **MCP Server Fails to Launch**: Verify that Node.js is on your Windows PATH (`node -v` in PowerShell). Double-check that Windows backslashes in `claude_desktop_config.json` are escaped as double backslashes (`\\\\`).
 - **Path Traversal Errors on Prescription Parsing**: The MCP server restricts file paths to the application repository boundary. Prescription images should be placed within the `data/` directory.
 - **Unverified Records Warning**: If Claude reports an interaction or schedule gap, check `get_review_status` to see if preliminary intake orders require clinician verification via `confirm_medication`.
+
+---
+
+## Agentic Architecture: Deterministic Workflow Orchestrator
+
+The system includes a deterministic, state-aware multi-agent workflow orchestrator that coordinates three specialized agents:
+1. **Prescription OCR & Normalization Agent** (`LocalOCREngine` + `DrugNormalizationService`)
+2. **Pharmacokinetic Conflict Engine** (`PharmacokineticConflictEngine` + `LocalInteractionEvidenceProvider`)
+3. **Circadian Schedule Coordinator** (`CircadianScheduleCoordinator` + `ChronoService`)
+
+The orchestrator enforces conditional state transitions, validation boundaries, evidence availability, and human clinician checkpoints rather than relying on an unconstrained sequence of LLM prompts.
+
+```mermaid
+stateDiagram-v2
+    [*] --> CREATED
+    CREATED --> RETRIEVING_PATIENT_CONTEXT
+    RETRIEVING_PATIENT_CONTEXT --> EXTRACTING_PRESCRIPTION: Prescription uploaded
+    RETRIEVING_PATIENT_CONTEXT --> AWAITING_MEDICATION_CONFIRMATION: Unverified med in chart
+    RETRIEVING_PATIENT_CONTEXT --> MEDICATIONS_CONFIRMED: All meds confirmed
+    RETRIEVING_PATIENT_CONTEXT --> AWAITING_PRESCRIPTION: Empty chart
+    AWAITING_PRESCRIPTION --> EXTRACTING_PRESCRIPTION: Prescription attached
+    EXTRACTING_PRESCRIPTION --> AWAITING_MEDICATION_CONFIRMATION: Ambiguous/uncertain OCR (<0.85)
+    EXTRACTING_PRESCRIPTION --> MEDICATIONS_CONFIRMED: High confidence match
+    AWAITING_MEDICATION_CONFIRMATION --> MEDICATIONS_CONFIRMED: Human clinician confirms
+    MEDICATIONS_CONFIRMED --> CHECKING_INTERACTIONS
+    CHECKING_INTERACTIONS --> AWAITING_CLINICAL_REVIEW: Severe DDI or data gap
+    CHECKING_INTERACTIONS --> PREPARING_SCHEDULE: No blocking conflicts
+    CHECKING_INTERACTIONS --> BLOCKED: Evidence provider offline
+    AWAITING_CLINICAL_REVIEW --> PREPARING_SCHEDULE: Clinician approves
+    AWAITING_CLINICAL_REVIEW --> MEDICATIONS_CONFIRMED: Medication modified
+    PREPARING_SCHEDULE --> AWAITING_SCHEDULE_REVIEW: Schedule drafted (conflicts preserved)
+    AWAITING_SCHEDULE_REVIEW --> COMPLETED: Clinician approves exact schedule vX
+    AWAITING_SCHEDULE_REVIEW --> MEDICATIONS_CONFIRMED: Feedback loop (med modified)
+    COMPLETED --> CHECKING_INTERACTIONS: Feedback loop (new lab entered)
+    BLOCKED --> CHECKING_INTERACTIONS: Evidence provider restored
+    CREATED --> CANCELLED
+    RETRIEVING_PATIENT_CONTEXT --> CANCELLED
+    AWAITING_MEDICATION_CONFIRMATION --> CANCELLED
+    AWAITING_CLINICAL_REVIEW --> CANCELLED
+    AWAITING_SCHEDULE_REVIEW --> CANCELLED
+```
+
+### 1. Workflow State Machine States
+
+The orchestrator defines 14 explicit states (`AgenticWorkflowState`):
+
+| State | Epistemic Significance & Gating Rule |
+| :--- | :--- |
+| `CREATED` | Initialized run. Awaiting patient context intake. |
+| `RETRIEVING_PATIENT_CONTEXT` | Ingests patient chart, diagnoses, labs, and active medications. |
+| `AWAITING_PRESCRIPTION` | Awaiting prescription image/PDF source upload. |
+| `EXTRACTING_PRESCRIPTION` | Processing document via local OCR and drug normalization. |
+| `AWAITING_MEDICATION_CONFIRMATION` | **Epistemic Truth Checkpoint**: Halts downstream execution if OCR confidence < 0.85, name is ambiguous, dose is missing, or chart contains unverified orders. |
+| `MEDICATIONS_CONFIRMED` | All medication entities and prescribed doses are verified as true. Prerequisite for interaction analysis. |
+| `CHECKING_INTERACTIONS` | Executes deterministic pharmacokinetic and pharmacodynamic conflict engine. |
+| `AWAITING_CLINICAL_REVIEW` | Halts for pharmacist/physician review when severe interactions or organ clearance gaps are detected. |
+| `PREPARING_SCHEDULE` | Evaluates circadian constraints and generates 24-hour diurnal dosing timetable. |
+| `AWAITING_SCHEDULE_REVIEW` | Preserves timing conflicts (e.g. bedtime diuretic hazard, chelation) for explicit human signoff. |
+| `COMPLETED` | All operational steps and human signoffs satisfied. Distinguishes operational completion from clinical approval. |
+| `BLOCKED` | A required external dependency (e.g., evidence provider) is unavailable; prevents unsupported clinical inferences. |
+| `FAILED` | An unrecoverable error occurred during execution. |
+| `CANCELLED` | Explicitly aborted by an authorized clinician. |
+
+### 2. Typed Tool Registry & Security Sandbox
+
+All operations are executed through a typed `ToolRegistry` with Zod input validation, output schema enforcement, expected failure mode mapping, and authorization policies:
+
+| Tool Name | Type | Authorization | Description |
+| :--- | :--- | :--- | :--- |
+| `get_patient_context` | Read-only | `authenticated_user` | Retrieves patient demographics, diagnoses, and baseline labs. |
+| `get_confirmed_medications`| Read-only | `authenticated_user` | Filters active medications to verified truth only. |
+| `parse_prescription` | Read-only | `authenticated_user` | Runs sandboxed OCR extraction with path traversal protection. |
+| `confirm_medication` | Mutating | `clinician_only` | Updates order verification status. Requires `CONFIRM_MUTATION` token and human identity. |
+| `check_interactions` | Read-only | `authenticated_user` | Deterministic PK/PD evaluation against confirmed medications and labs. |
+| `get_interaction_evidence`| Read-only | `authenticated_user` | Retrieves authoritative, un-fabricated clinical trial evidence. |
+| `evaluate_schedule_constraints` | Read-only | `authenticated_user` | Proposes 24h timetable and flags circadian conflicts. |
+| `create_review_request` | Mutating | `authenticated_user` | Records formal human review items. |
+| `get_workflow_status` | Read-only | `authenticated_user` | Inspects state, version, and completed/failed operations. |
+
+**Prohibited Tools**: The registry strictly rejects arbitrary shell commands, eval, raw SQL, unrestricted filesystem read/write, or script execution (`eval`, `system_shell`, `execute_command`, `write_file`, `read_arbitrary_file`, `raw_sql`).
+
+### 3. Shared State (`WorkflowContext`) & Optimistic Concurrency
+
+Workflow state is persisted in SQLite (`workflow_contexts` and `review_requests` tables) and maintains strict categorical boundaries:
+
+- **Raw Extracted Data**: Unprocessed OCR tokens, raw text, and candidate entities with confidence scores.
+- **User-Confirmed Data**: Orders verified by a licensed clinician against the clinical problem list.
+- **Verified Reference Data**: Authoritative RxNorm concept IDs and curated monographs.
+- **Derived Findings**: Calculated PK/PD interactions, duplicate chemical entities, and clearance gaps.
+- **Proposed Schedules**: Diurnal dosing timetables and preserved timing conflicts.
+- **Human-Approved Outcomes**: Clinical overrides, rationales, and signed-off timetables.
+
+**Optimistic Concurrency Control**: Every context mutation increments `version`. Updates verify `WHERE id = ? AND version = ?`. Concurrent updates colliding on the same version throw an `OptimisticConcurrencyError` to prevent race conditions and lost clinical overrides.
+
+### 4. Controlled Feedback Loops & Invalidation Engine
+
+When upstream clinical facts change, the `FeedbackEngine` invalidates downstream derived results without requiring a full manual system reset:
+
+- **Medication Corrections**: When a dose or identity is corrected, all operations tagged with `medication:<id>` (and dependent schedules) are marked `invalidated`. Findings are cleared, prior schedule approvals are invalidated, and state transitions to `MEDICATIONS_CONFIRMED`.
+- **New Laboratory Data**: When new renal/hepatic values (e.g., eGFR, Serum Creatinine) are entered, only findings depending on `lab:<testName>` are invalidated. Unaffected findings are preserved.
+- **Dataset Versioning**: Tracks dataset versions (`dataset:interactions:2026.1`). If guidelines or reference tables update, old findings are marked stale.
+- **Retry Limits & Deduplication**: Recoverable errors can be retried up to 3 times (`MAX_OPERATION_RETRIES`). Identical operations with unchanged input hashes and dependencies reuse results to prevent duplicate execution.
+
+### 5. Human-in-the-Loop Controls & Versioned Approvals
+
+The `ReviewRequestService` manages escalations across 6 categories:
+1. `medication_identity_clarification`
+2. `missing_prescription_instructions`
+3. `potentially_significant_interaction`
+4. `insufficient_clinical_evidence`
+5. `conflicting_scheduling_constraints`
+6. `schedule_review`
+
+**Safety Rules**:
+- **Versioned Approval**: An approval must specify the exact version of the item reviewed (`targetVersion === itemVersion`). If underlying data changed in the interim, approval is rejected with `ApprovalVersionMismatchError`.
+- **Approval Invalidation**: If a medication or schedule is modified after approval, prior approvals are automatically marked `invalidated`.
+- **AI Impersonation Prevention**: Reviewer identity is strictly validated. Autonomous LLM/AI actors (`llm`, `assistant`, `gpt`, `bot`, empty identity) are strictly prohibited from approving clinical reviews.
+
+### 6. REST API Endpoints
+
+The orchestrator exposes the following endpoints under `/api/orchestration/agentic`:
+
+| Method | Endpoint | Description |
+| :--- | :--- | :--- |
+| `POST` | `/api/orchestration/agentic/workflows` | Creates a new workflow context for a patient. |
+| `GET` | `/api/orchestration/agentic/workflows/:workflowId` | Retrieves current workflow context, operations, and review items. |
+| `POST` | `/api/orchestration/agentic/workflows/:workflowId/advance` | Steps the workflow to the next permitted operational state. |
+| `POST` | `/api/orchestration/agentic/workflows/:workflowId/confirm-candidate` | Human clinician confirms an unverified OCR candidate. |
+| `POST` | `/api/orchestration/agentic/workflows/:workflowId/reviews/:reviewId/resolve` | Resolves a review request with versioned human signoff. |
+| `POST` | `/api/orchestration/agentic/workflows/:workflowId/correct-medication` | Triggers medication feedback invalidation loop. |
+| `POST` | `/api/orchestration/agentic/workflows/:workflowId/record-lab` | Triggers lab measurement feedback invalidation loop. |
+| `GET` | `/api/orchestration/agentic/tools` | Lists all registered tools with schemas and policies. |
+| `POST` | `/api/orchestration/agentic/tools/call` | Executes a registered tool with authorization and Zod validation. |
+
+---
+
+## Phase 2: Agent Tool Contracts, Capability Declarations & MCP Integration
+
+Phase 2 establishes typed tool contracts and explicit capability declarations for the three specialized agents, extends the deterministic state orchestrator with a dynamic operation selector (`determineNextOperation`), introduces immutable execution audit logging with sanitized input hashing, and enables seamless tool invocation and workflow inspection from Claude Desktop via MCP.
+
+### 1. Specialized Agent Capability Declarations
+
+Each agent operates within an explicitly declared boundary with typed preconditions, postconditions, permitted tools, and human approval policies:
+
+```mermaid
+flowchart TD
+    subgraph Agents["Specialized Clinical Agents"]
+        direction TB
+        Agent1["<b>Prescription Agent</b><br/><i>prescription_agent</i><br/>• parse_prescription<br/>• submit_candidate_medications<br/>• get_patient_context"]
+        Agent2["<b>Interaction Agent</b><br/><i>interaction_agent</i><br/>• check_interactions<br/>• get_interaction_evidence<br/>• get_confirmed_medications"]
+        Agent3["<b>Scheduling Agent</b><br/><i>scheduling_agent</i><br/>• evaluate_schedule_constraints<br/>• propose_schedule_draft<br/>• get_confirmed_medications"]
+    end
+
+    subgraph Orchestrator["Agentic Workflow Orchestrator"]
+        Decision["determineNextOperation(workflowId)<br/><i>State Machine + Dependency Graph</i>"]
+        Tracker["ExecutionTracker & ToolRegistry<br/><i>SHA-256 Sanitized Hash + SQLite Audit</i>"]
+    end
+
+    subgraph HITL["Human-in-the-Loop Safeguards"]
+        Rev1["Medication Confirmation<br/><i>Requires human clinician</i>"]
+        Rev2["Interaction Review<br/><i>Contraindications / Narrow TI</i>"]
+        Rev3["Schedule Signoff<br/><i>100% Dose Preservation Check</i>"]
+    end
+
+    Agent1 -->|"Submits unverified orders"| Rev1
+    Rev1 -->|"Confirmed Truth"| Agent2
+    Agent2 -->|"Flags severe DDIs & data gaps"| Rev2
+    Rev2 -->|"Cleared Regimen"| Agent3
+    Agent3 -->|"Proposes draft (requiresClinicianApproval=true)"| Rev3
+    Decision -.->|"Controls next step"| Agents
+    Tracker -.->|"Logs immutable audit records"| Orchestrator
+```
+
+#### A. Prescription OCR & Normalization Agent (`prescription_agent`)
+- **Role**: Ingests prescription documents and images, runs optical character recognition, and normalizes candidate medication orders against RxNorm standard entities.
+- **Permitted Tools**: `parse_prescription`, `submit_candidate_medications`, `get_patient_context`, `get_workflow_status`.
+- **Prohibited Tools**: `confirm_medication`, `check_interactions`, `propose_schedule_draft`, `resolve_review_request`.
+- **Preconditions**: Target patient exists; input file path is validated within sandboxed upload directory.
+- **Postconditions**: Generates candidate orders with status strictly set to `unverified`. Automatically creates review requests for ambiguous or low-confidence extractions (<0.85) or missing required dosage/frequency instructions.
+- **Human Approval Policy**: Explicit human clinician or pharmacist verification is mandatory before candidate orders can enter the confirmed active regimen.
+
+#### B. Pharmacokinetic Conflict Engine Agent (`interaction_agent`)
+- **Role**: Executes deterministic pharmacokinetic and pharmacodynamic interaction screening across confirmed active regimens, renal/hepatic biomarkers, and chronic diagnoses. Retrieves authoritative clinical trial citations and KDIGO/FDA guidance.
+- **Permitted Tools**: `check_interactions`, `get_interaction_evidence`, `get_confirmed_medications`, `get_patient_context`, `get_workflow_status`.
+- **Prohibited Tools**: `confirm_medication`, `submit_candidate_medications`, `propose_schedule_draft`, `resolve_review_request`.
+- **Preconditions**: All evaluated medications have `verificationStatus = 'confirmed'`. Reference datasets (FDA DDI, KDIGO) are online.
+- **Postconditions**: Produces categorized findings (contraindicated, major, moderate, minor), duplicate active therapy alerts, and clearance data gaps. Strictly unaltered deterministic output from the conflict engine; cannot inject fabricated findings.
+- **Human Approval Policy**: Mandatory clinical review request for contraindicated or major interactions, narrow therapeutic index drugs, and renal clearance gaps.
+
+#### C. Circadian Schedule Coordinator Agent (`scheduling_agent`)
+- **Role**: Evaluates chronological dosing constraints, food-drug absorption relationships, and diurnal patient routines to propose a 24-hour administration draft.
+- **Permitted Tools**: `evaluate_schedule_constraints`, `propose_schedule_draft`, `get_confirmed_medications`, `get_patient_context`, `get_workflow_status`.
+- **Prohibited Tools**: `confirm_medication`, `submit_candidate_medications`, `check_interactions`, `resolve_review_request`.
+- **Preconditions**: All active medications are confirmed truth; patient diurnal routine is recorded; interaction screening is evaluated.
+- **Postconditions**: Proposes a 24-hour administration draft preserving 100% of prescribed doses, formulations, and instructions (zero dose changes allowed). Identifies and preserves timing conflicts without inventing solutions. Marks draft strictly with `scheduleApproved = false`.
+- **Human Approval Policy**: All generated schedules require explicit human clinician or pharmacist review and signoff before administration.
+
+---
+
+### 2. Core Workflow Capabilities & Safety Invariants
+
+1. **Candidate Ingestion Without Autonomous Verification**: The prescription agent can submit candidate medication records into the shared `WorkflowContext`, but cannot mark them verified. Every candidate is unconditionally assigned status `unverified` and automatically generates a human review item when ambiguous.
+2. **Deterministic Interaction Screening Without Hallucination**: The interaction agent calls the deterministic conflict engine and authoritative evidence provider. It cannot invent citations, fabricate clinical findings, or bypass clearance data gaps.
+3. **100% Dose-Preserving Scheduling Without Self-Approval**: The scheduling agent evaluates validated constraints and proposes a 24-hour diurnal timetable. A safety check verifies that 100% of prescribed doses are preserved (`comparison.unchangedDoseCount === comparison.totalMedications`). The agent cannot approve its own schedule (`requiresClinicianApproval = true`).
+4. **Dynamic Operation Selection (`determineNextOperation`)**: The orchestrator inspects the current state, unverified candidates, evidence health, and outstanding approvals to determine:
+   - `currentState` & `nextOperation`
+   - `permittedAgent` (`prescription_agent`, `interaction_agent`, `scheduling_agent`, or `human_clinician`)
+   - `permittedTools` & `prohibitedTools`
+   - `blockingDependencies` & `outstandingApprovals`
+   - `canAutoAdvance`: `true` only if no pending human signoffs block the workflow.
+5. **Claude Desktop MCP Tool Calling**: Claude Desktop can invoke permitted MCP tools to inspect workflow state, advance workflows stepwise, submit candidate medications, propose draft schedules, resolve review requests, and inspect immutable tool execution records.
+
+---
+
+### 3. Immutable Tool Execution Audit Records & Sanitized Input Hashing
+
+Every tool call through the `ToolRegistry` records an immutable audit entry in the SQLite `tool_executions` table:
+
+```typescript
+export interface ToolExecutionRecord {
+  readonly operationId: string;
+  readonly workflowId: string;
+  readonly agentId?: string;
+  readonly toolName: string;
+  readonly inputHash: string; // SHA-256 of sanitized input (no raw image/PII)
+  readonly dependencyVersions: Record<string, string | number>;
+  readonly status: 'success' | 'failed' | 'blocked';
+  readonly startedAt: string;
+  readonly completedAt: string;
+  readonly durationMs: number;
+  readonly error?: StructuredError;
+  readonly resultSummary?: string;
+}
+```
+
+**Sanitized Input Hashing (`computeSanitizedInputHash`)**:
+- Raw binary image buffers, base64 strings, file paths containing sensitive image bytes, and PII are redacted prior to hashing.
+- Keys are canonicalized to generate a deterministic SHA-256 digest regardless of object key ordering.
+- Sensitive prescription contents are never leaked to logs or execution records.
+
+---
+
+### 4. Registered MCP Tool Catalog (22 Tools)
+
+The Model Context Protocol (MCP) server provides 22 decision-support and orchestration tools over stdio:
+
+#### A. Agentic Orchestration Tools (Phase 2)
+| Tool Name | Parameters | Description |
+| :--- | :--- | :--- |
+| `orchestrator_get_state` | `workflowId` | Inspects state, next operation decision, unverified candidates, and pending reviews. |
+| `orchestrator_step` | `workflowId`, `actor` | Advances workflow to the next permitted state using deterministic rules. |
+| `get_tool_execution_history`| `workflowId`, `limit` | Retrieves immutable audit execution records with input hashes and durations. |
+| `get_agent_capabilities` | `agentId` (optional) | Retrieves capability declarations, permitted/prohibited tools, and policies. |
+| `submit_candidate_medications`| `workflowId`, `candidates` | Prescription agent tool to submit unverified candidate medication orders. |
+| `propose_schedule_draft` | `workflowId`, `patientId` | Scheduling agent tool to propose 24h timetable preserving 100% prescribed doses. |
+| `resolve_review_request` | `reviewId`, `status`, `reviewerIdentity`, `targetVersion` | Human clinician signoff tool with targetVersion verification and anti-AI impersonation. |
+
+#### B. Clinical Decision-Support Tools
+| Tool Name | Parameters | Description |
+| :--- | :--- | :--- |
+| `list_patients` | `search` | Lists authorized geriatric patient records. |
+| `get_patient_medications` | `patientId`, `confirmedOnly` | Retrieves confirmed active medications (or unverified orders if false). |
+| `parse_prescription` | `filePath`, `patientId` | Extracts candidate orders using local OCR with path traversal protection. |
+| `get_interaction_report` | `patientId` | Evaluates deterministic PK/PD conflict engine against active regimen and labs. |
+| `get_clinical_evidence` | `findingId`, `ingredientPair` | Retrieves authoritative monograph and clinical trial citations. |
+| `propose_medication_schedule`| `patientId` | Proposes 24-hour diurnal administration draft. |
+| `get_review_status` | `patientId` | Inspects unconfirmed orders and outstanding review items. |
+| `confirm_medication` | `medicationId`, `actor`, `confirmationToken`, `justification` | Clinician tool to verify orders into confirmed truth (`CONFIRM_MUTATION`). |
+| `get_patient_review_report`| `patientId`, `actor` | Synthesizes consolidated clinical dossier. |
+
+#### C. Synthetic Testing & Benchmark Tools
+| Tool Name | Parameters | Description |
+| :--- | :--- | :--- |
+| `list_synthetic_patients` | `scenarioFilter` | Lists 8 synthetic geriatric test cohort profiles. |
+| `get_synthetic_medications`| `patientId` | Retrieves synthetic medication orders with provenance. |
+| `load_ocr_fixture` | `fixtureId` | Evaluates synthetic prescription OCR test fixtures. |
+| `run_interaction_fixture` | `fixtureId` | Evaluates synthetic drug-interaction test fixtures. |
+| `run_schedule_fixture` | `scenarioId` | Evaluates synthetic circadian schedule test fixtures. |
+| `get_test_results` | `category` | Retrieves test fixture inventory across OCR, DDI, and scheduling. |
+
+---
+
+## Agentic Architecture Phase 3: Persistent Shared State & Feedback Loops
+
+Phase 3 extends the orchestrator with **dependency-aware shared state management**, an **explicit artifact Directed Acyclic Graph (DAG)**, **deterministic SHA-256 fingerprints**, **historical auditing in SQLite**, and **controlled selective recomputation**.
+
+```mermaid
+flowchart TD
+    IMG["1. Prescription Image<br/><i>(prescription_image)</i>"] --> OCR["2. OCR Extraction<br/><i>(ocr_extraction)</i>"]
+    OCR --> MED["3. Confirmed Medications<br/><i>(confirmed_medications)</i>"]
+    MED --> DDI["4. Interaction Findings<br/><i>(interaction_findings)</i>"]
+    MED --> CON["5. Scheduling Constraints<br/><i>(scheduling_constraints)</i>"]
+    DDI --> SCH["6. Draft Schedule<br/><i>(draft_schedule)</i>"]
+    CON --> SCH
+    SCH --> REV["7. Human Approval<br/><i>(human_approval)</i>"]
+    DDI --> REV
+
+    classDef current fill:#e6f4ea,stroke:#137333,stroke-width:2px;
+    classDef stale fill:#fce8e6,stroke:#c5221f,stroke-width:2px,stroke-dasharray: 5 5;
+    class IMG,OCR current;
+    class MED,DDI,CON,SCH,REV stale;
+```
+
+---
+
+### 1. Artifact Directed Acyclic Graph (DAG) & Deterministic Fingerprints
+
+Every clinical artifact produced in a workflow is maintained as a typed node in `context.artifactGraph`:
+
+```typescript
+export interface WorkflowArtifactNode<TData = any> {
+  readonly artifactId: string;
+  readonly artifactType: WorkflowArtifactType;
+  readonly version: number;
+  readonly contentHash: string;            // SHA-256 canonical digest of artifact data
+  readonly dependencyFingerprint: string;  // SHA-256 combined hash of immediate upstream nodes
+  readonly status: 'current' | 'stale' | 'invalidated';
+  readonly invalidationReason?: string;
+  readonly updatedAt: string;
+  readonly data?: TData;
+}
+```
+
+#### Deterministic Canonical Fingerprints
+- **Zero LLM Freshness Heuristics**: An LLM is strictly prohibited from deciding whether a cached clinical artifact remains fresh. Freshness is determined purely through deterministic cryptographic fingerprints.
+- **Topological Invariant**: If any upstream node's `contentHash` changes, the downstream node's computed `expectedFingerprint` no longer matches `node.dependencyFingerprint`. The orchestrator immediately marks downstream nodes `stale` without touching unaffected upstream nodes.
+
+---
+
+### 2. Concrete Example: Upstream Medication Correction Triggering Selective Recomputation
+
+#### Scenario
+A 74-year-old patient (Margaret Chen) has completed an interaction evaluation and draft schedule review for her multi-drug regimen. Subsequent lab results reveal an elevated TSH, prompting the attending clinician to correct her Levothyroxine dose from **50 mcg** to **75 mcg**.
+
+#### Step 1: Upstream Invalidation & Topological Propagation
+The clinician submits the correction via `orchestrator.correctMedication(workflowId, medId, actor, reason)`:
+1. `confirmed_medications` is updated with the new order details.
+2. Downstream artifacts are marked `stale`:
+   - `interaction_findings` → marked `stale` (reason: *"Medication Levothyroxine corrected: Updated dose from 50mcg to 75mcg"*).
+   - `scheduling_constraints` → marked `stale`.
+   - `draft_schedule` → marked `stale`.
+   - `human_approval` → revoked (`scheduleApproved: false`).
+3. **Upstream Nodes Remain Untouched**:
+   - `prescription_image` remains `current`.
+   - `ocr_extraction` remains `current`.
+   - The expensive, non-deterministic OCR parsing step is **never re-run**.
+
+#### Step 2: Historical Archiving for Clinical Auditing
+Before the active findings and draft schedule are cleared:
+- The previous versions (v1), content hashes, and fingerprints are persisted into the SQLite `workflow_artifact_history` table and `context.historicalArtifacts`.
+- Clinical auditors can inspect the exact findings that were presented prior to the dose correction.
+
+#### Step 3: Query Guard Enforcement
+Any query for active findings or schedules through `getActiveFindings(workflowId)` or `getActiveSchedule(workflowId)` deterministically rejects stale data:
+```typescript
+const findings = orchestrator.getActiveFindings(workflowId);
+// Returns:
+// {
+//   isCurrent: false,
+//   findings: [],
+//   status: 'stale',
+//   invalidationReason: 'Medication "med-p3-1" corrected: Updated dose from 50mcg to 75mcg'
+// }
+```
+Stale drug interaction findings and unapproved timetables are **strictly prevented from being presented as current clinical truth**.
+
+#### Step 4: Selective Recomputation
+The orchestrator executes `orchestrator.recomputeAffectedOperations(workflowId, actor)`:
+```typescript
+const result = await orchestrator.recomputeAffectedOperations(workflowId, 'Clinical Feedback Engine');
+
+// Returns:
+// {
+//   workflowId: 'wf-1234',
+//   skippedOperations: ['EXTRACT_PRESCRIPTION'],
+//   recomputedOperations: ['CHECK_INTERACTIONS'],
+//   currentState: 'AWAITING_CLINICAL_REVIEW'
+// }
+```
+- `EXTRACT_PRESCRIPTION` is **skipped** because OCR extraction remains fresh.
+- `CHECK_INTERACTIONS` is **recomputed** using the updated 75 mcg dose.
+- If the updated interaction check identifies severe risks or clinical data gaps, the workflow safely pauses at `AWAITING_CLINICAL_REVIEW`.
+- Once the clinician reviews and signs off on the renewed findings, a subsequent recomputation pass executes `COORDINATE_SCHEDULE`, refreshing the 24-hour diurnal administration timetable to version 2 (`status: 'current'`).
+
+---
+
+### 3. Configurable Retry Policies & Exponential Backoff
+
+All workflow operations adhere to a typed `RetryPolicy`:
+
+```typescript
+export interface RetryPolicy {
+  readonly maxRetries: number;       // Default: 3
+  readonly initialBackoffMs: number; // Default: 100ms
+  readonly backoffMultiplier: number;// Default: 2.0
+  readonly maxBackoffMs: number;     // Default: 1000ms
+}
+```
+
+- **Recoverable Errors** (e.g. transient network timeouts when querying external evidence providers):
+  - Retried with exponential backoff: `delay = min(initialBackoff * multiplier^(attempt - 1), maxBackoff)`.
+  - When `attempt >= maxRetries`, the orchestrator stops retrying and transitions to `BLOCKED` or `FAILED`.
+- **Non-Recoverable Errors** (e.g. fatal contraindications, schema validation failures):
+  - `canRetryOperation` returns `false` immediately on the first attempt, preventing infinite retries or repeated execution of unviable operations.
+
+---
+
+### 4. Workflow Recovery After Server Restart
+
+In production environments, servers may experience unexpected termination while operations are in flight. The orchestrator provides deterministic crash recovery via `orchestrator.recoverActiveWorkflows()`:
+
+1. **Transient State Reconciliation**:
+   - `RETRIEVING_PATIENT_CONTEXT` → Safely reverts to `CREATED`.
+   - `EXTRACTING_PRESCRIPTION` → Reconciled to `EXTRACTING_PRESCRIPTION` if document reference is present, otherwise `AWAITING_PRESCRIPTION`.
+   - `CHECKING_INTERACTIONS` → Reconciled to `MEDICATIONS_CONFIRMED`.
+   - `PREPARING_SCHEDULE` → Reconciled to `AWAITING_CLINICAL_REVIEW` if reviews are pending, otherwise `MEDICATIONS_CONFIRMED`.
+2. **DAG Fingerprint Validation**:
+   - Re-evaluates all artifact nodes in SQLite against upstream dependencies.
+   - Detects any fingerprint mismatches caused by interrupted transactions and marks corrupted artifacts `stale`.
+3. **Structured Recovery Audit**:
+   - Returns a `WorkflowRecoveryReport` and logs an immutable audit event for every recovered workflow.
+
+---
+
+## Agentic Architecture Phase 4: Human Review and Approval Gates
+
+Phase 4 introduces **strict Human-in-the-Loop (HITL) clinical governance** and deterministic safety gates. In safety-critical clinical environments, autonomous agents are strictly decision-support tools. Clinical authority remains exclusively with authorized human practitioners.
+
+```mermaid
+flowchart TD
+    subgraph Autonomous["Autonomous Multi-Agent Pipeline"]
+        OCR["Prescription OCR Agent"] --> MED["Candidate Medication Extraction"]
+        DDI["Pharmacokinetic Engine"] --> INT["Interaction Findings"]
+        CHRONO["Circadian Coordinator"] --> SCH["Draft 24h Timetable"]
+    end
+
+    subgraph Gates["Deterministic Approval Gates (7 Safety Invariants)"]
+        G1{"Gate 1: Verified Ingredient?"}
+        G2{"Gate 2: Evidence Present?"}
+        G3{"Gate 3: Constraints Resolved?"}
+        G4{"Gate 4: Human Role Authorized?"}
+        G5{"Gate 5: Target Version Fresh?"}
+    end
+
+    subgraph ReviewQueue["Clinical Review Queue & Immutable Ledgers"]
+        RQ["Review Queue (6 Categories)<br/>• Identity Clarification<br/>• Missing Instructions<br/>• Significant Interactions<br/>• Insufficient Evidence<br/>• Scheduling Conflicts<br/>• Draft Schedule Review"]
+        SIGN["Human Clinician Sign-Off<br/><i>(Physician / Pharmacist / Nurse)</i>"]
+        APP_REC[("SQLite: approval_records<br/><i>(Immutable Audit Ledger)</i>")]
+        WF_COMP["State: COMPLETED"]
+    end
+
+    MED --> G1
+    G1 -- Unverified --> RQ
+    G1 -- Confirmed --> DDI
+    INT --> G2
+    G2 -- Data Gap --> RQ
+    G2 -- Documented --> CHRONO
+    SCH --> G3
+    G3 -- Hard Conflict --> RQ
+    G3 -- Unresolved Constraints Met --> RQ
+    RQ --> G4 --> G5 --> SIGN
+    SIGN --> APP_REC
+    APP_REC --> WF_COMP
+
+    classDef gate fill:#fef3c7,stroke:#d97706,stroke-width:2px;
+    classDef review fill:#ede9fe,stroke:#7c3aed,stroke-width:2px;
+    classDef approved fill:#dcfce7,stroke:#15803d,stroke-width:2px;
+    class G1,G2,G3,G4,G5 gate;
+    class RQ,SIGN review;
+    class APP_REC,WF_COMP approved;
+```
+
+---
+
+### The 7 Clinical Safety & Governance Invariants
+
+| Rule | Governance Invariant | Implementation Mechanism | Enforcement Point |
+| :--- | :--- | :--- | :--- |
+| **Rule 1** | **Unverified medication cannot be treated as a confirmed ingredient** | Unverified candidate medication orders (`status === 'unverified'`) stop execution at `AWAITING_MEDICATION_CONFIRMATION` or block interaction analysis with `WorkflowPrerequisiteError`. They are never passed to the interaction engine as confirmed ingredients. | `agenticWorkflowOrchestrator.ts`<br/>`executeInteractionCheck()` |
+| **Rule 2** | **Failed evidence lookup cannot be represented as a negative result** | When clinical evidence lookup fails, provider is offline, or evidence monograph is missing, the engine surfaces an `insufficient_clinical_evidence` review request. Evidence gaps are never masked as "0 interactions" or false negative safety. | `interactionEvidenceProvider.ts`<br/>`conflictEngine.ts` |
+| **Rule 3** | **Schedule with unresolved mandatory constraints cannot be marked ready for approval** | If a draft schedule encounters an unresolvable hard constraint (`severity === 'urgent_prescriber_review'` or `impossible_constraint`), attempting to approve `schedule_review` throws `WorkflowPrerequisiteError`. All mandatory constraint conflicts must be resolved first. | `agenticWorkflowOrchestrator.ts`<br/>`resolveHumanReview()` |
+| **Rule 4** | **An LLM cannot create a clinician identity or impersonate a reviewer** | Review resolutions strictly validate reviewer identity. Any name containing autonomous agent or model tokens (e.g. `Claude`, `GPT-4`, `LLM`, `Assistant`, `Bot`, `Autonomous Agent`) is immediately rejected with `UnauthorizedReviewerError`. | `reviewAuthorizationPolicy.ts`<br/>`assertHumanReviewer()` |
+| **Rule 5** | **Changed artifact must be reviewed again if change affects prior approval** | When underlying data changes (e.g. prescriber adjusts dose or new lab measurement is recorded), prior approvals for dependent artifacts are marked `validUntilStale = false` in SQLite, requiring renewed clinician review. | `feedbackEngine.ts`<br/>`approvalRecordRepository.ts` |
+| **Rule 6** | **Approval must be recorded separately from workflow completion** | Human clinical signoff creates a permanent, immutable `ApprovalRecord` in the `approval_records` database table. The workflow state machine remains in review state until an explicit completion step, requiring verified human signoff before reaching `COMPLETED`. | `transitions.ts`<br/>`approval_records` table |
+| **Rule 7** | **Only authorized clinical roles can perform privileged review actions** | Resolving reviews enforces a strict server-side permissions matrix (`ROLE_PERMISSIONS`). Roles without sufficient clinical authority (e.g. Registered Nurse attempting to override severe drug-drug interactions) throw `UnauthorizedReviewerRoleError`. | `reviewAuthorizationPolicy.ts`<br/>`assertRoleAuthorized()` |
+
+---
+
+### The 6 Human Review Categories
+
+Every review request in the system is typed and references the exact workflow ID, entity ID, target artifact type, and target artifact version:
+
+```typescript
+export type ReviewCategory =
+  | 'medication_identity_clarification'    // Uncertain OCR extraction or unverified candidate order
+  | 'missing_prescription_instructions'   // Missing dosage, frequency, route, or administration instructions
+  | 'potentially_significant_interaction' // Severe pharmacokinetic/pharmacodynamic conflict requiring clinician signoff
+  | 'insufficient_clinical_evidence'       // Clinical monograph gap or missing trial citation
+  | 'conflicting_scheduling_constraints'  // Mandatory circadian timing clash (e.g. chelation, meals)
+  | 'schedule_review';                    // Final 24-hour diurnal administration draft approval
+```
+
+---
+
+### Role-Based Authorization Policy Matrix
+
+Clinical review actions enforce role-based access control on the server:
+
+```typescript
+export const ROLE_PERMISSIONS: Record<ReviewCategory, readonly ReviewerRole[]> = {
+  medication_identity_clarification: ['attending_physician', 'clinical_pharmacist'],
+  missing_prescription_instructions: ['attending_physician', 'clinical_pharmacist'],
+  potentially_significant_interaction: [
+    'attending_physician',
+    'clinical_pharmacist',
+    'medical_director',
+  ],
+  insufficient_clinical_evidence: [
+    'attending_physician',
+    'clinical_pharmacist',
+    'medical_director',
+  ],
+  conflicting_scheduling_constraints: [
+    'attending_physician',
+    'clinical_pharmacist',
+    'registered_nurse',
+  ],
+  schedule_review: ['attending_physician', 'clinical_pharmacist'],
+};
+```
+
+- **Clinical Pharmacists & Attending Physicians**: Authorized to resolve all medication confirmations, pharmacokinetic conflict assessments, evidence gap evaluations, and final draft schedule approvals.
+- **Registered Nurses**: Authorized to review and coordinate routine administration constraints and timing spacing on the ward, but **strictly barred** from confirming new medication identities or overriding severe drug-drug interaction warnings.
+- **Autonomous AI / LLMs**: Strictly prohibited from resolving any clinical review item.
+
+---
+
+### Persistent Immutable Approval Records (SQLite)
+
+Approval records are stored in a dedicated `approval_records` table independent of transient workflow memory:
+
+```sql
+CREATE TABLE IF NOT EXISTS approval_records (
+  id TEXT PRIMARY KEY,
+  workflow_id TEXT NOT NULL,
+  review_request_id TEXT NOT NULL,
+  category TEXT NOT NULL,
+  target_entity_type TEXT NOT NULL,
+  target_entity_id TEXT NOT NULL,
+  target_artifact_type TEXT NOT NULL,
+  target_artifact_version INTEGER NOT NULL,
+  reviewer_identity TEXT NOT NULL,
+  reviewer_role TEXT NOT NULL,
+  decision TEXT NOT NULL,
+  rationale TEXT NOT NULL,
+  decided_at TEXT NOT NULL,
+  valid_until_stale INTEGER NOT NULL DEFAULT 1,
+  superseded_by TEXT,
+  created_at TEXT NOT NULL,
+  FOREIGN KEY (workflow_id) REFERENCES agentic_workflows(workflow_id) ON DELETE CASCADE,
+  FOREIGN KEY (review_request_id) REFERENCES review_requests(id) ON DELETE CASCADE
+);
+```
+
+When an approved artifact (e.g. `confirmed_medications`) is updated via a feedback loop:
+1. `approvalRepo.invalidateApprovalsForArtifact(workflowId, 'confirmed_medications')` executes.
+2. `valid_until_stale` is set to `0` (`false`).
+3. Historical approvals are preserved for compliance and malpractice auditing, but marked stale so they cannot be presented as current approval.
+
+---
+
+### Frontend Review Queue UI (`ReviewQueueTab.tsx`)
+
+The clinical frontend provides a dedicated **Review Queue** workspace tab within the patient dashboard:
+
+- **Metrics & KPIs**: Displays live counts of items *Awaiting Action*, *Approved Reviews*, and *Active Approvals*.
+- **Filter Toolbar**: Allows real-time filtering by status (`all`, `pending`, `approved`, `rejected`, `invalidated`) and category.
+- **Review Cards**: Displays the reason for escalation, clinical context, target artifact type and version, requested reviewer action, and supporting evidence references.
+- **Interactive Sign-Off Modal**:
+  - Clinician decision toggle: *Approve*, *Modify*, *Reject*.
+  - Role selector with live capability indicators.
+  - Reviewer name input with real-time AI impersonation rejection banner.
+  - Clinical rationale textarea persisted to the audit trail.
+- **Immutable Approval Records Audit Table**: Displays the permanent history of all approvals, including timestamps, role credentials, target versions, and freshness pills (*Fresh & Valid* vs *Invalidated (Stale)*).
+
+---
+
+### MCP Tools for Claude Desktop
+
+Claude Desktop can inspect the review queue and approval records using typed, read-only MCP tools:
+
+1. **`get_review_queue`**:
+   - `workflowId` (optional): Filter reviews for a specific workflow context.
+   - `status` (optional): Filter by review status (`pending`, `approved`, `rejected`, `all`).
+2. **`get_approval_records`**:
+   - `workflowId`: Retrieves immutable approval records for a workflow, including reviewer identities, roles, decisions, and validity states.
+3. **`resolve_review_request`**:
+   - `reviewId`: Unique review request identifier.
+   - `status`: Decision (`approved`, `rejected`, `modified`).
+   - `reviewerIdentity`: Name and credentials of licensed clinician (AI rejected).
+   - `reviewerRole`: Authorized clinical role (`clinical_pharmacist`, `attending_physician`, `registered_nurse`, `medical_director`).
+   - `targetVersion`: Exact version of target artifact to prevent race conditions.
+
+---
+
+### Phase 4 Verification & Test Results
+
+The comprehensive test suite covers all 7 governance invariants, role permissions, version racing, and feedback loop invalidations:
+
+```bash
+npm test
+```
+
+```
+ Test Files  35 passed (35)
+      Tests  262 passed (262)
+   Start at  23:47:44
+   Duration  11.74s
+```
+
+All 35 test files (262 tests) pass with zero errors, zero warnings, and clean protocol purity.
+
+> [!NOTE]
+> **Synthetic Test Data Notice (`[SYNTHETIC_TEST_DATA]`)**:
+> This software is an investigational prototype and research architecture for multi-agent coordination. All patient profiles, prescriptions, laboratory panels, and drug monographs are synthetic fixtures for evaluation and testing. It is not approved as a medical device for standalone clinical diagnosis or treatment.
+
+---
+
+## Agentic Architecture Phase 5: End-to-End Agentic Workflow Validation
+
+Phase 5 delivers comprehensive, automated end-to-end integration validation across the entire Polypharmacy Drug-Interaction & Chrono-Dosing Coordinator platform using synthetic fixtures and automated test harnesses.
+
+### 13-Step Clinical Scenario Walkthrough
+
+The end-to-end integration suite (`tests/orchestration/agenticEndToEndValidation.test.ts`) verifies an authentic, multi-agent clinical workflow from patient onboarding to final human approval:
+
+```mermaid
+flowchart TD
+    S1["1. Create Synthetic Patient<br/>(Lisinopril, Metformin, KCl)"] --> S2["2. Submit Prescription Fixture<br/>(Low-confidence Spironolactone)"]
+    S2 --> S3["3. Orchestrator Halts Checkpoint<br/>(AWAITING_MEDICATION_CONFIRMATION)"]
+    S3 --> S4["4. Clinician Confirms Candidate<br/>(MEDICATIONS_CONFIRMED)"]
+    S4 --> S5["5. Interaction Engine Runs<br/>(Detects Severe Hyperkalemia Risk)"]
+    S5 --> S6["6. Simulate Evidence Provider Outage<br/>(Workflow Transitions to BLOCKED)"]
+    S6 --> S7["7. Restore Provider & Retry<br/>(CHECKING_INTERACTIONS -> AWAITING_CLINICAL_REVIEW)"]
+    S7 --> S8["8. Clinical Correction Cascade<br/>(Medication change marks DAG stale)"]
+    S8 --> S9["9. Introduce Scheduling Conflict<br/>(Mandatory 4-hr separation conflict)"]
+    S9 --> S10["10. Clinician Resolves Conflict<br/>(Draft timetable generated)"]
+    S10 --> S11["11. Strict Version-Gated Human Approval<br/>(Rejects AI bot; Clinician approves v1)"]
+    S11 --> S12["12. Lab Input Change Invalidates Approval<br/>(Serum K+ rise -> validUntilStale=false)"]
+    S12 --> S13["13. MCP Inspection & Final Dossier<br/>(orchestrator_get_final_report)"]
+```
+
+1. **Synthetic Patient Onboarding**: Patient "Evelyn Reed" is created with confirmed baseline active therapies: Lisinopril 20mg daily, Metformin 500mg BID, and Potassium Chloride 20 mEq daily.
+2. **Ambiguous Prescription Intake**: Prescription agent submits an OCR-extracted candidate (`Aldactone 25mg ?? daily`, confidence score `0.62`, below the `0.85` threshold).
+3. **Confirmation Checkpoint**: The state machine halts downstream interaction analysis and pauses at `AWAITING_MEDICATION_CONFIRMATION`, generating a `medication_identity_clarification` review request. Attempts to bypass confirmation throw `InvalidWorkflowTransitionError`.
+4. **Authorized Medication Confirmation**: Licensed clinical pharmacist clarifies brand and dose, transitioning workflow to `MEDICATIONS_CONFIRMED`.
+5. **Deterministic Interaction Screening**: Conflict engine evaluates the full 4-drug regimen, deterministically identifying severe dual potassium-sparing hyperkalemia risks.
+6. **Evidence Provider Outage Handling**: When the interaction evidence provider simulates an outage, the orchestrator immediately transitions to `BLOCKED`, recording a recoverable failure and strictly forbidding the hallucination of unsupported negative interaction findings.
+7. **Safe Recovery & Resumption**: Upon evidence provider restoration, the orchestrator automatically detects service health, unblocks the pipeline, and safely resumes interaction checks.
+8. **Feedback Invalidation Cascade**: Clinical pharmacist adjusts the Spironolactone dose. The artifact DAG cascades an invalidation: `confirmed_medications`, `interaction_findings`, and `draft_schedule` are deterministically marked `stale`. `getActiveFindings()` guarantees stale data cannot be presented as current clinical truth.
+9. **Constraint Conflict Preservation**: Chrono coordinator identifies a mandatory 4-hour administration window separation conflict between Aldactone and Potassium Chloride, creating a `conflicting_scheduling_constraints` review request. Schedule approval is blocked while mandatory constraints remain unresolved.
+10. **Human Clinician Resolution**: Clinical pharmacist resolves the timing conflict by scheduling morning fasting and midday meal administrations.
+11. **Strict Version-Gated Approval**: Autonomous LLMs/bots (`Claude Assistant`, `ChatGPT-4o`) and mismatched version targets (`v1 + 999`) are rejected. Licensed clinical pharmacist approves the exact current target version.
+12. **Freshness Invalidation on Lab Update**: New laboratory data (Serum Potassium: 5.6 mEq/L critical high) is entered. Downstream schedule approvals are immediately marked `validUntilStale = false` with provenance explanation.
+13. **MCP Clinical Inspection & Final Reporting**: Claude Desktop MCP inspects `orchestrator_get_state`, `get_review_queue`, `get_approval_records`, `get_tool_execution_history`, and `orchestrator_get_final_report`.
+
+---
+
+### Verification of the 9 Core Architectural Assertions
+
+| # | Architectural Assertion | Verification Mechanism | Status |
+|---|-------------------------|------------------------|:------:|
+| **1** | **Validated Tool Invocations** | All tool inputs are validated via Zod schemas; malformed invocations return structured `{ success: false, error: ... }` errors with SHA-256 execution records in SQLite. | **VERIFIED** |
+| **2** | **Prerequisite-Gated Execution** | State machine blocks unverified candidates from interaction screening (`WorkflowPrerequisiteError`) and rejects premature transitions (`InvalidWorkflowTransitionError`). | **VERIFIED** |
+| **3** | **Deterministic Freshness Guarantees** | After medication or lab changes, `getActiveFindings()` and `getActiveSchedule()` return `{ isCurrent: false, status: 'stale' }`, preventing stale clinical results from being used. | **VERIFIED** |
+| **4** | **Synthetic Fixture Demarcation** | All interaction findings and circadian rules cite synthetic fixtures (`[SYNTHETIC_TEST_DATA]`); the final report explicitly contains prototype and safety disclaimers. | **VERIFIED** |
+| **5** | **Anti-AI Impersonation Protection** | `ReviewAuthorizationPolicy` regex enforcement rejects autonomous AI and LLM names (`Claude Assistant`, `ChatGPT-4o`, `Autonomous Agent`) with `UnauthorizedReviewerError`. | **VERIFIED** |
+| **6** | **Bounded Operation Retries** | `FeedbackEngine.canRetryOperation` halts re-execution when configured `maxRetries` (3 attempts) is exceeded, preventing unbounded loops. | **VERIFIED** |
+| **7** | **Crash Survival & DAG Recovery** | Active workflows and transient crash states (`CHECKING_INTERACTIONS`) are recovered and reconciled to safe idempotent states after simulated server restarts with verified DAG fingerprints. | **VERIFIED** |
+| **8** | **Immutable Audit Trail** | Every workflow creation, state transition (`TRANSITION_*`), feedback invalidation, and human resolution is permanently logged in SQLite `audit_logs`. | **VERIFIED** |
+| **9** | **Dossier Report Distinction** | `generateFinalReport()` and MCP `orchestrator_get_final_report` explicitly differentiate: (1) Technical Completion, (2) Outstanding Clinical Reviews, and (3) Human Approval Status. | **VERIFIED** |
+
+---
+
+### Final Integration Test Suite Results
+
+```bash
+node ./node_modules/vitest/vitest.mjs run
+```
+
+```
+ Test Files  36 passed (36)
+      Tests  272 passed (272)
+   Duration  11.55s
+```
+
+All 36 test files and 272 automated integration tests pass with 0 failures, 0 regressions, and strict type safety across client, server, and MCP bundles.
+
+
+
+

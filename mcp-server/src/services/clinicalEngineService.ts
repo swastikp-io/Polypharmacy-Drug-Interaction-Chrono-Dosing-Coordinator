@@ -28,6 +28,16 @@ import { OCRExtractionService } from '../../../src/server/services/ocr/ocrExtrac
 import { LocalRxNormTerminologyProvider } from '../../../src/server/services/ocr/terminologyProvider.js';
 import { DrugNormalizationService } from '../../../src/server/services/ocr/normalizationService.js';
 import { WorkflowCoordinator } from '../../../src/server/services/orchestration/workflowCoordinator.js';
+import { WorkflowRepository } from '../../../src/server/repositories/workflowRepository.js';
+import { ReviewRequestRepository } from '../../../src/server/repositories/reviewRequestRepository.js';
+import { ToolExecutionRepository } from '../../../src/server/repositories/toolExecutionRepository.js';
+import { ArtifactHistoryRepository } from '../../../src/server/repositories/artifactHistoryRepository.js';
+import { ApprovalRecordRepository } from '../../../src/server/repositories/approvalRecordRepository.js';
+import { DEFAULT_RETRY_POLICY } from '../../../src/shared/orchestrationTypes.js';
+import { ToolRegistry } from '../../../src/server/services/orchestration/tools/toolRegistry.js';
+import { createClinicalTools } from '../../../src/server/services/orchestration/tools/clinicalTools.js';
+import { ReviewRequestService } from '../../../src/server/services/orchestration/reviewRequestService.js';
+import { AgenticWorkflowOrchestrator } from '../../../src/server/services/orchestration/agenticWorkflowOrchestrator.js';
 import {
   SecurityService,
   validateSafePath,
@@ -45,6 +55,11 @@ export class ClinicalEngineService {
   public readonly labRepo: LabMeasurementRepository;
   public readonly auditRepo: AuditLogRepository;
   public readonly chronoRepo: ChronoRepository;
+  public readonly workflowRepo: WorkflowRepository;
+  public readonly reviewRequestRepo: ReviewRequestRepository;
+  public readonly toolExecutionRepo: ToolExecutionRepository;
+  public readonly artifactHistoryRepo: ArtifactHistoryRepository;
+  public readonly approvalRepo: ApprovalRecordRepository;
 
   public readonly auditService: AuditService;
   public readonly chronoService: ChronoService;
@@ -57,6 +72,9 @@ export class ClinicalEngineService {
   public readonly terminologyProvider: LocalRxNormTerminologyProvider;
   public readonly ocrNormalizationService: DrugNormalizationService;
   public readonly workflowCoordinator: WorkflowCoordinator;
+  public readonly reviewRequestService: ReviewRequestService;
+  public readonly toolRegistry: ToolRegistry;
+  public readonly agenticOrchestrator: AgenticWorkflowOrchestrator;
   public readonly securityService: SecurityService;
 
   public readonly repositoryRoot: string;
@@ -94,6 +112,11 @@ export class ClinicalEngineService {
     this.labRepo = new LabMeasurementRepository(this.db);
     this.auditRepo = new AuditLogRepository(this.db);
     this.chronoRepo = new ChronoRepository(this.db);
+    this.workflowRepo = new WorkflowRepository(this.db);
+    this.reviewRequestRepo = new ReviewRequestRepository(this.db);
+    this.toolExecutionRepo = new ToolExecutionRepository(this.db);
+    this.artifactHistoryRepo = new ArtifactHistoryRepository(this.db);
+    this.approvalRepo = new ApprovalRecordRepository(this.db);
 
     // Services
     this.auditService = new AuditService(this.auditRepo);
@@ -130,6 +153,46 @@ export class ClinicalEngineService {
       this.chronoCoordinator,
       this.chronoService,
       this.ocrNormalizationService
+    );
+
+    this.reviewRequestService = new ReviewRequestService(
+      this.reviewRequestRepo,
+      this.auditService,
+      this.approvalRepo
+    );
+
+    this.toolRegistry = new ToolRegistry(this.toolExecutionRepo);
+    const clinicalTools = createClinicalTools({
+      patientRepo: this.patientRepo,
+      medRepo: this.medRepo,
+      labRepo: this.labRepo,
+      diagRepo: this.diagRepo,
+      auditService: this.auditService,
+      conflictEngine: this.conflictEngine,
+      evidenceProvider: this.interactionEvidenceProvider,
+      chronoCoordinator: this.chronoCoordinator,
+      chronoService: this.chronoService,
+      workflowRepo: this.workflowRepo,
+      reviewRequestRepo: this.reviewRequestRepo,
+      ocrNormalizationService: this.ocrNormalizationService,
+      ocrEngine: this.ocrEngine,
+    });
+    for (const tool of clinicalTools) {
+      this.toolRegistry.registerTool(tool);
+    }
+
+    this.agenticOrchestrator = new AgenticWorkflowOrchestrator(
+      this.workflowRepo,
+      this.reviewRequestService,
+      this.toolRegistry,
+      this.patientRepo,
+      this.medRepo,
+      this.labRepo,
+      this.auditService,
+      this.toolExecutionRepo,
+      this.artifactHistoryRepo,
+      DEFAULT_RETRY_POLICY,
+      this.approvalRepo
     );
 
     this.securityService = new SecurityService(

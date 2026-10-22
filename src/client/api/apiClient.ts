@@ -22,7 +22,11 @@ import type {
   ScheduleReviewSubmission,
 } from '../../shared/chronoTypes.js';
 import type {
+  ApprovalRecord,
   ConsolidatedClinicalReport,
+  ReviewRequest,
+  ReviewResolution,
+  WorkflowContext,
   WorkflowResumeRequest,
   WorkflowRun,
   WorkflowRunOptions,
@@ -287,6 +291,51 @@ export const api = {
       body: JSON.stringify({ toolName, arguments: args }),
     }),
 
+  // Agentic Workflow & Human Review Gates (Phases 1-4)
+  createAgenticWorkflow: (data: {
+    patientId: string;
+    prescriptionDocumentId?: string;
+    requireExplicitConfirmation?: boolean;
+    actor?: string;
+  }) =>
+    request<WorkflowContext>('/orchestration/agentic/workflows', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  getAgenticWorkflow: (workflowId: string) =>
+    request<WorkflowContext>(`/orchestration/agentic/workflows/${workflowId}`),
+
+  advanceAgenticWorkflow: (workflowId: string, actor?: string) =>
+    request<WorkflowContext>(`/orchestration/agentic/workflows/${workflowId}/advance`, {
+      method: 'POST',
+      body: JSON.stringify({ actor }),
+    }),
+
+  getPendingReviews: () =>
+    request<ReviewRequest[]>('/orchestration/agentic/reviews/pending'),
+
+  getWorkflowReviews: (workflowId: string, status?: string) =>
+    request<ReviewRequest[]>(
+      `/orchestration/agentic/workflows/${workflowId}/reviews${status ? `?status=${status}` : ''}`
+    ),
+
+  getWorkflowApprovals: (workflowId: string) =>
+    request<ApprovalRecord[]>(`/orchestration/agentic/workflows/${workflowId}/approvals`),
+
+  resolveReviewRequest: (
+    workflowId: string,
+    reviewId: string,
+    resolution: ReviewResolution
+  ) =>
+    request<WorkflowContext>(
+      `/orchestration/agentic/workflows/${workflowId}/reviews/${reviewId}/resolve`,
+      {
+        method: 'POST',
+        body: JSON.stringify(resolution),
+      }
+    ),
+
   // Phase 6: Governance, Security & Portability
   exportPatientDossier: (patientId: string) =>
     request<any>(`/governance/patient/${patientId}/export`),
@@ -296,4 +345,35 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ confirmationToken, reason }),
     }),
+
+  // Developer & Synthetic Data Panel
+  getDevStats: () =>
+    request<any>('/dev/stats'),
+
+  seedDevDataset: () =>
+    request<any>('/dev/seed', { method: 'POST' }),
+
+  resetDevDataset: (confirmationToken: string) =>
+    request<any>('/dev/reset', {
+      method: 'POST',
+      body: JSON.stringify({ confirmationToken }),
+    }),
+
+  getOcrFixtures: () =>
+    request<any[]>('/dev/fixtures/ocr'),
+
+  runOcrFixture: (fixtureId: string) =>
+    request<any>(`/dev/fixtures/ocr/${fixtureId}/run`, { method: 'POST' }),
+
+  getInteractionFixtures: () =>
+    request<any[]>('/dev/fixtures/interactions'),
+
+  runInteractionFixture: (fixtureId: string) =>
+    request<any>(`/dev/fixtures/interactions/${fixtureId}/run`, { method: 'POST' }),
+
+  getScheduleFixtures: () =>
+    request<any[]>('/dev/fixtures/schedules'),
+
+  runScheduleFixture: (scenarioId: string) =>
+    request<any>(`/dev/fixtures/schedules/${scenarioId}/run`, { method: 'POST' }),
 };

@@ -241,7 +241,22 @@ export class OCRExtractionService {
         field: 'frequency',
         issueType: 'incomplete_sig',
         severity: 'warning',
-        description: 'Administration frequency is incomplete or missing in written sig.',
+        description:
+          'Missing prescribed frequency: administration frequency is incomplete or missing in written sig.',
+      });
+    }
+
+    // Check for contradictory administration instructions (e.g. empty stomach vs with meal)
+    const hasEmptyStomach = /empty[- ]stomach/i.test(snippet);
+    const hasWithMeals = /with (?:heavy |light )?(?:breakfast |dinner |lunch )?(?:meal|meals|food)/i.test(snippet);
+    if (hasEmptyStomach && hasWithMeals) {
+      ambiguities.push({
+        id: randomUUID(),
+        field: 'administrationInstructions',
+        issueType: 'incomplete_sig',
+        severity: 'warning',
+        description:
+          'Contradictory meal instructions: sig specifies both "empty stomach" and "with meals". Prescriber clarification required.',
       });
     }
 

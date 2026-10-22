@@ -273,6 +273,8 @@ export class CircadianScheduleCoordinator {
           assignedSlots = ['slot_wake_fasted'];
           if (isBid) {
             assignedSlots.push('slot_evening_dinner');
+          } else if (isTid) {
+            assignedSlots.push('slot_midday_lunch', 'slot_evening_dinner');
           }
         } else if (rule.targetSlot === 'slot_bedtime') {
           assignedSlots = ['slot_bedtime'];
